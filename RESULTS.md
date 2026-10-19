@@ -41,6 +41,7 @@ spread is half a result.
 | 2ca                                  | 2026-10-08 | Model: XGBoost | mean cohens_kappa 0.754 (sd 0.011, range 0.742-0.765 across 3 subjects) | Yes vs 2c | - | `c85cb4` |
 |                                     |                |                                                              |                                                              |                                                              |                                                              |               |
 | 2f (spindle preservation) | 2026-10-16 | Physiological validation of P1 vs P2 on eight automatically detected spindle candidates in two N2 epochs from SC400; compared sigma power, Hilbert envelope, independent re-detection and temporal matching | N/A — diagnostic analysis only; no new LOSO classification run. P2 sigma-power retention: 27.63% (SD 17.98 pp); P1 re-detection: 8/8; P2: 5/8 at IoU ≥ 0.30 | P1 better preserved the selected spindle candidates; classification performance not reassessed | Retain P1 as the preferred preprocessing candidate; reconsider P2 thresholding before further use, subject to larger-scale validation | `217763e` |
+| 2g (mother wavelet comparison) | 2026-10-19 | Compared db4, sym4, coif1 and coif3 under identical 3-fold subject-wise LOSO conditions (16,688 epochs); verified exact reproduction of the original db4 P2 features | db4: mean κ 0.736 (sd 0.102, range 0.620–0.811); sym4: 0.730 (sd 0.104, range 0.611–0.806); coif1: 0.727 (sd 0.090, range 0.625–0.798); coif3: 0.738 (sd 0.103, range 0.621–0.813), across 3 subjects | No clear improvement — coif3 gained only +0.002 mean κ over db4 | Retain db4 as the P2 reference; reconsider coif3 on a larger development cohort. P1 remains the preferred preprocessing candidate | Pending commit |
 |  |  |  |  |  |  |  |
 | 4 |  |  |  | yes / no |  |  |
 | 4 |  |  |  | yes / no |  |  |
@@ -52,7 +53,126 @@ spread is half a result.
 *"Better" means better under the same honest harness — same split unit, same evaluation mode, same seed. A change that lowers the metric can still be the right call (simpler, faster, more robust across subjects, removes a leak). Say so in the column instead of quietly reverting it: "kept — κ fell 0.02 but the worst-subject κ rose from 0.18 to 0.31" is a stronger result than a silent higher mean.*
 
 ## Detailed log
-### Physiological preservation of sleep spindles — Lili — 2026-10-16
+### Mother wavelet comparison and subject-level diagnostics - Lili - 2026-10-19
+
+**Motivation.**
+
+The previous spindle-preservation analysis indicated that the original P2 configuration (`db4`) substantially attenuated selected sigma-band oscillations. Four mother wavelets (`db4`, `sym4`, `coif1`, and `coif3`) were therefore investigated to determine whether changing the wavelet could improve physiological signal preservation and downstream sleep-stage classification.
+
+**Methods and implementation validation.**
+
+The classification experiment used three subjects (SC400, SC401 and SC402), two nights per subject, and 16,688 labelled 30-second epochs. Each wavelet was evaluated using the same 11 features, Welch spectral estimation, Random Forest classifier (seed 0), and three subject-wise LOSO folds.
+
+A dedicated comparison track explicitly selected the mother wavelet because the original preprocessing dispatch did not propagate this parameter from the configuration.
+
+Validation confirmed that:
+
+- All four feature matrices had shape `(16688, 11)`.
+- Labels and subject assignments remained identical across configurations.
+- All extracted feature values were finite.
+- The custom `db4` feature matrix exactly reproduced the original P2 feature matrix.
+- The alternative wavelets produced different feature values, confirming that the intended preprocessing parameter was actually changed.
+
+**Classification results.**
+
+| Wavelet | Pooled accuracy | Pooled Cohen's kappa | Pooled macro-F1 | Pooled balanced accuracy |
+|---|---:|---:|---:|---:|
+| db4 | 0.877 | 0.743 | **0.648** | **0.613** |
+| sym4 | 0.874 | 0.737 | 0.636 | 0.603 |
+| coif1 | 0.872 | 0.734 | 0.635 | 0.604 |
+| coif3 | **0.878** | **0.745** | 0.647 | **0.613** |
+
+The results show no substantial improvement from replacing `db4`. Although `coif3` achieved the highest pooled Cohen's kappa, its advantage over `db4` was only 0.002, while its macro-F1 was marginally lower.
+
+The earlier signal-preservation experiment found higher sigma-power retention with `coif1` than with `db4` (40.74% versus 27.63%). However, `coif1` did not improve downstream classification. This illustrates that preserving more sigma-band energy in a small set of spindle candidates does not necessarily improve the classification metrics.
+
+**Subject-wise Cohen's kappa (primary metric).**
+
+| Mother wavelet | Mean kappa | SD | Range |
+|---|---:|---:|---|
+| db4 | 0.736 | 0.102 | 0.620–0.811 |
+| sym4 | 0.730 | 0.104 | 0.611–0.806 |
+| coif1 | 0.727 | 0.090 | 0.625–0.798 |
+| coif3 | 0.738 | 0.103 | 0.621–0.813 |
+
+The highest mean subject-wise Cohen's kappa was obtained with coif3 (0.738), compared with 0.736 for db4. This difference (+0.002) was negligible relative to the between-subject variability (SD approximately 0.10). Therefore, the present three-subject development experiment does not provide sufficient evidence to replace db4 with coif3.
+
+**Sleep-stage recall analysis.**
+
+| Stage | db4 | sym4 | coif1 | coif3 |
+|---|---:|---:|---:|---:|
+| W | 97.2% | 97.1% | 97.0% | 97.2% |
+| N1 | 20.6% | 20.0% | 18.8% | 20.3% |
+| N2 | 89.8% | 89.8% | 88.9% | 90.1% |
+| N3 | 35.6% | 31.9% | 33.0% | 34.3% |
+| REM | 63.2% | 62.7% | 64.2% | 64.6% |
+
+All four configurations recognized W and N2 considerably better than N1 and N3. Changing the mother wavelet did not resolve the poor minority-stage recall.
+
+![Wavelet confusion matrices](results/wavelet_comparison/loso/wavelet_confusion_matrices.png)
+
+**Subject-level diagnostic analysis.**
+
+The `db4` LOSO confusion matrices revealed substantial inter-subject variability.
+
+| Held-out subject | Cohen's kappa | Macro-F1 | Balanced accuracy |
+|---|---:|---:|---:|
+| SC400 | 0.620 | 0.492 | 0.496 |
+| SC401 | 0.811 | 0.714 | 0.706 |
+| SC402 | 0.777 | 0.703 | 0.677 |
+
+SC400 was particularly challenging: its N1, N3 and REM recalls were 0.9%, 17.0% and 41.2%, respectively. SC401 and SC402 achieved substantially better results for several stages.
+
+![db4 confusion matrices by subject](results/wavelet_comparison/loso/db4_confusions_by_subject.png)
+
+**Ground-truth sleep-stage distribution.**
+
+| Subject | W | N1 | N2 | N3 | REM |
+|---|---:|---:|---:|---:|---:|
+| SC400 | 70.9% | 2.1% | 11.4% | 9.4% | 6.2% |
+| SC401 | 65.1% | 3.6% | 21.6% | 3.6% | 6.1% |
+| SC402 | 68.0% | 5.0% | 17.0% | 3.8% | 6.2% |
+
+Wakefulness accounted for approximately 68% of the pooled epochs. N1 represented only 3.6%, indicating strong class imbalance.
+
+However, stage frequency alone does not explain all subject-level differences. SC400 had the highest proportion of N3 epochs but the lowest N3 recall. Additional investigations are required before attributing these errors to a particular cause.
+
+![True sleep-stage distribution by subject](results/wavelet_comparison/loso/stage_distribution_by_subject.png)
+
+**Decision and limitations.**
+
+The tested mother wavelets produced similar overall classification performance. `db4` is retained as the reference P2 configuration, while `coif3` is identified as a candidate for re-evaluation with more development subjects.
+
+This does not reverse the earlier preference for P1 band-pass filtering, which remains supported by the prior classification and spindle-preservation analyses.
+
+The experiment used only three subjects and four wavelet configurations. Differences of a few thousandths in pooled metrics should not be interpreted as evidence of superiority. Repeated comparisons on the same development subjects can also introduce model-selection bias.
+
+**Next steps.**
+
+1. Verify how wake epochs are selected and whether wake cropping is applied in the current pipeline.
+2. Investigate class imbalance and subject-specific classification errors.
+3. Reassess `coif3` on a larger development cohort.
+4. Preserve the final holdout for independent evaluation of the selected pipeline.
+
+**Reproducibility.**
+
+Scripts:
+
+- `scripts/compare_wavelets.py`
+- `scripts/compare_wavelets_loso.py`
+- `scripts/plot_wavelet_confusions.py`
+- `scripts/plot_db4_confusions_by_subject.py`
+- `scripts/analyze_stage_distribution.py`
+
+Results:
+
+- `results/wavelet_comparison/loso/wavelet_loso_summary.csv`
+- `results/wavelet_comparison/loso/stage_distribution_by_subject.csv`
+- `results/wavelet_comparison/loso/` — diagnostic figures
+
+Commit: pending.
+
+### Physiological preservation of sleep spindles - Lili - 2026-10-16
 
 **Motivation.**
 
@@ -804,7 +924,7 @@ diagnose from.
 | # | The downstream result that triggered it | Which earlier decision it indicted | What you changed | What happened to the metric |
 |---|---|---|---|---|
 | 1 | *e.g.* worst-subject κ 0.14 vs. mean 0.61 | stage 2 — no per-recording normalisation | z-scored band powers within each recording | mean κ 0.61 → 0.59, **worst subject 0.14 → 0.38** — kept |
-| 2 |  |  |  |  |
+| 2 | P2 db4 attenuated selected spindle candidates and matched only 5/8 raw candidates, prompting a review of its preprocessing settings | Stage 2 — choice of mother wavelet for P2 | Revisited the db4 choice by testing sym4, coif1 and coif3 under identical LOSO conditions | coif3 increased pooled kappa from 0.743 to 0.745 but reduced macro-F1 from 0.648 to 0.647; db4 was retained as the P2 reference, and P1 remained preferred |
 
 
 
@@ -823,6 +943,7 @@ between iterations. Record what actually happened.
 | 2 | Lili | Signal-quality review; implemented and validated P1 EEG band-pass preprocessing, P2 EEG wavelet denoising and P3 broken-segment detection/exclusion; performed short-window and continuous-duration QC analysis of near-flat segments; ran controlled P0/P1, P0/P2 and P0/P3 LOSO comparisons; analysed subject-wise metrics, stage-wise performance and confusion matrices | Xingkai |
 | 2e | Lili | Designed and implemented P5 suspected EEG clipping detection and recording-level quality flagging; analysed amplitude extrema and plateau durations across six recordings; validated preservation of all signals and labels; exported clipping QC results; performed LOSO evaluation and verified that all 16,688 P5 predictions were identical to P0; documented leakage considerations and limitations. Also investigated impulsive EEG disturbances and baseline variations, developed exploratory EEG/EOG event diagnostics, grouped candidate events into episodes, performed morphological verification, and documented the decision not to introduce additional automatic corrections. | |
 | 2f | Lili | Designed and implemented the spindle-preservation evaluation of P1 and P2; performed automatic spindle-candidate detection, sigma-band power and Hilbert-envelope comparisons, independent re-detection, one-to-one IoU matching, matching-threshold sensitivity analysis and epoch-boundary checks; generated quantitative CSV outputs and diagnostic figures; documented physiological limitations and the resulting preprocessing recommendation. | |
+| 2g | Lili | Designed and executed the four-mother-wavelet comparison; verified exact db4 baseline reproduction and feature/label alignment; performed three-fold LOSO Random Forest evaluation; analysed pooled and stage-specific confusion matrices, subject-level classification errors and ground-truth sleep-stage distributions; documented conclusions and follow-up investigations. | |
 
 
 

@@ -1,0 +1,5 @@
+wavelet,accuracy,cohens_kappa,macro_f1,balanced_accuracy
+db4,0.877,0.743,0.648,0.613
+sym4,0.874,0.737,0.636,0.603
+coif1,0.872,0.734,0.635,0.604
+coif3,0.878,0.745,0.647,0.613

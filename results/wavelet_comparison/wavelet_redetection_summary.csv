@@ -1,0 +1,5 @@
+wavelet,n_raw,n_detected,n_matched,n_missed,n_unmatched_processed,redetection_rate_pct,mean_matched_iou
+db4,8,9,5,3,4,62.5,0.5950339487466672
+sym4,8,12,5,3,7,62.5,0.6719490220969733
+coif1,8,13,5,3,8,62.5,0.6999910018075637
+coif3,8,10,3,5,7,37.5,0.5956445212493601

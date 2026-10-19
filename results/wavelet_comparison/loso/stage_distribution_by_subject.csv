@@ -1,0 +1,4 @@
+subject,total_epochs,W_count,N1_count,N2_count,N3_count,REM_count,W_percent,N1_percent,N2_percent,N3_percent,REM_percent
+SC400,5479,3882,117,623,517,340,70.85,2.14,11.37,9.44,6.21
+SC401,5650,3680,201,1222,201,346,65.13,3.56,21.63,3.56,6.12
+SC402,5559,3778,278,947,214,342,67.96,5.0,17.04,3.85,6.15
