@@ -42,7 +42,7 @@ spread is half a result.
 |                                     |                |                                                              |                                                              |                                                              |                                                              |               |
 | 2f (spindle preservation) | 2026-10-16 | Physiological validation of P1 vs P2 on eight automatically detected spindle candidates in two N2 epochs from SC400; compared sigma power, Hilbert envelope, independent re-detection and temporal matching | N/A — diagnostic analysis only; no new LOSO classification run. P2 sigma-power retention: 27.63% (SD 17.98 pp); P1 re-detection: 8/8; P2: 5/8 at IoU ≥ 0.30 | P1 better preserved the selected spindle candidates; classification performance not reassessed | Retain P1 as the preferred preprocessing candidate; reconsider P2 thresholding before further use, subject to larger-scale validation | `217763e` |
 | 2g (mother wavelet comparison) | 2026-10-19 | Compared db4, sym4, coif1 and coif3 under identical 3-fold subject-wise LOSO conditions (16,688 epochs); verified exact reproduction of the original db4 P2 features | db4: mean κ 0.736 (sd 0.102, range 0.620–0.811); sym4: 0.730 (sd 0.104, range 0.611–0.806); coif1: 0.727 (sd 0.090, range 0.625–0.798); coif3: 0.738 (sd 0.103, range 0.621–0.813), across 3 subjects | No clear improvement — coif3 gained only +0.002 mean κ over db4 | Retain db4 as the P2 reference; reconsider coif3 on a larger development cohort. P1 remains the preferred preprocessing candidate | 510d041 |
-| 2h (P6 clock cropping) | 2026-10-21 | Fixed 20:30–11:00 clock-based selection for training epochs, combined with P1 band-pass; full held-out nights retained for testing | mean κ 0.735 (sd 0.102, range 0.620–0.816 across 3 subjects); P1: 0.743 (sd 0.114) | No, pooled κ 0.752→0.742; balanced accuracy 0.619→0.625, but better classification for some sleep stages | Retained as a reproducible, label-independent training-selection experiment; P1 remains preferred | Pending |
+| 2h (P6 clock cropping) | 2026-10-21 | Fixed 20:30–11:00 clock-based selection for training epochs, combined with P1 band-pass; full held-out nights retained for testing | mean κ 0.735 (sd 0.102, range 0.620–0.816 across 3 subjects); P1: 0.743 (sd 0.114) | No, pooled κ 0.752→0.742; balanced accuracy 0.619→0.625, but better classification for some sleep stages | Retained as a reproducible, label-independent training-selection experiment; P1 remains preferred | `f8bbda7` |
 | 4 |  |  |  | yes / no |  |  |
 | 4 |  |  |  | yes / no |  |  |
 | 4 |  |  |  | yes / no |  |  |
@@ -157,6 +157,7 @@ Results:
 
 - `results/clock_cropping/`
 
+Commit: `f8bbda7`.
 
 ### Mother wavelet comparison and subject-level diagnostics - Lili - 2026-10-19
 
