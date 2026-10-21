@@ -42,7 +42,7 @@ spread is half a result.
 |                                     |                |                                                              |                                                              |                                                              |                                                              |               |
 | 2f (spindle preservation) | 2026-10-16 | Physiological validation of P1 vs P2 on eight automatically detected spindle candidates in two N2 epochs from SC400; compared sigma power, Hilbert envelope, independent re-detection and temporal matching | N/A — diagnostic analysis only; no new LOSO classification run. P2 sigma-power retention: 27.63% (SD 17.98 pp); P1 re-detection: 8/8; P2: 5/8 at IoU ≥ 0.30 | P1 better preserved the selected spindle candidates; classification performance not reassessed | Retain P1 as the preferred preprocessing candidate; reconsider P2 thresholding before further use, subject to larger-scale validation | `217763e` |
 | 2g (mother wavelet comparison) | 2026-10-19 | Compared db4, sym4, coif1 and coif3 under identical 3-fold subject-wise LOSO conditions (16,688 epochs); verified exact reproduction of the original db4 P2 features | db4: mean κ 0.736 (sd 0.102, range 0.620–0.811); sym4: 0.730 (sd 0.104, range 0.611–0.806); coif1: 0.727 (sd 0.090, range 0.625–0.798); coif3: 0.738 (sd 0.103, range 0.621–0.813), across 3 subjects | No clear improvement — coif3 gained only +0.002 mean κ over db4 | Retain db4 as the P2 reference; reconsider coif3 on a larger development cohort. P1 remains the preferred preprocessing candidate | 510d041 |
-|  |  |  |  |  |  |  |
+| 2h (P6 clock cropping) | 2026-10-21 | Fixed 20:30–11:00 clock-based selection for training epochs, combined with P1 band-pass; full held-out nights retained for testing | mean κ 0.735 (sd 0.102, range 0.620–0.816 across 3 subjects); P1: 0.743 (sd 0.114) | No, pooled κ 0.752→0.742; balanced accuracy 0.619→0.625, but better classification for some sleep stages | Retained as a reproducible, label-independent training-selection experiment; P1 remains preferred | Pending |
 | 4 |  |  |  | yes / no |  |  |
 | 4 |  |  |  | yes / no |  |  |
 | 4 |  |  |  | yes / no |  |  |
@@ -53,6 +53,111 @@ spread is half a result.
 *"Better" means better under the same honest harness — same split unit, same evaluation mode, same seed. A change that lowers the metric can still be the right call (simpler, faster, more robust across subjects, removes a leak). Say so in the column instead of quietly reverting it: "kept — κ fell 0.02 but the worst-subject κ rose from 0.18 to 0.31" is a stronger result than a silent higher mean.*
 
 ## Detailed log
+### P6 - Clock-based cropping and subject-wise evaluation - Lili - 2026-10-21
+
+**Motivation.**
+
+Exploratory analysis of the six Sleep-EDF recordings revealed a substantial class imbalance, with Wake accounting for 11,340 of 16,688 epochs (67.95%). P6 investigated whether restricting the training data to a fixed nighttime interval could reduce Wake dominance and improve sleep-stage classification.
+
+**Method and experimental design.**
+
+P6 applied the same 0.5–40 Hz EEG band-pass filtering as P1. Epoch timestamps were reconstructed from the PSG EDF measurement date and the annotation-derived epoch onsets. A fixed 20:30–11:00 window was used to select training epochs independently of their sleep-stage labels.
+
+The experiment included SC400, SC401 and SC402, with two recordings per subject. The classification pipeline retained the same 11 features, Welch spectral estimation, 200-tree Random Forest, balanced class weights and seed 0.
+
+Evaluation used three leave-one-subject-out (LOSO) folds. In each fold, P6 trained exclusively on nighttime epochs from the two training subjects, while predictions were generated for **all epochs of the held-out subject**. P1 used all training epochs. This ensured identical test sets for the two configurations.
+
+**Cropping results.**
+
+| Recording | Original epochs | Nighttime epochs | Outside window |
+|---|---:|---:|---:|
+| SC4001E0 | 2,650 | 1,740 | 910 |
+| SC4002E0 | 2,829 | 1,739 | 1,090 |
+| SC4011E0 | 2,802 | 1,740 | 1,062 |
+| SC4012E0 | 2,848 | 1,740 | 1,108 |
+| SC4021E0 | 2,804 | 1,740 | 1,064 |
+| SC4022E0 | 2,755 | 1,739 | 1,016 |
+| **Total** | **16,688** | **10,438** | **6,250** |
+
+The clock window retained 62.55% of the original epochs. All 6,250 outside-window epochs were labelled Wake in this development cohort. This was established through post-hoc label analysis; labels were not used to determine the cropping mask.
+
+**Full-night LOSO classification results.**
+
+| Metric | P1 | P6 |
+|---|---:|---:|
+| Pooled accuracy | 0.8799 | 0.8731 |
+| Pooled Cohen's kappa | 0.7516 | 0.7421 |
+| Pooled macro-F1 | 0.6539 | 0.6520 |
+| Pooled balanced accuracy | 0.6185 | 0.6251 |
+| Mean subject-wise kappa | 0.743 | 0.735 |
+| SD of subject-wise kappa | 0.114 | 0.102 |
+
+P6 slightly improved balanced accuracy (+0.0066), but reduced pooled Cohen's kappa (−0.0095), accuracy (−0.0068) and macro-F1 (−0.0019). The differences were small relative to the observed subject-to-subject variability.
+
+**Subject-wise Cohen's kappa.**
+
+| Held-out subject | P1 | P6 |
+|---|---:|---:|
+| SC400 | 0.6152 | 0.6195 |
+| SC401 | 0.8347 | 0.8156 |
+| SC402 | 0.7798 | 0.7685 |
+
+P6 slightly improved performance on SC400 but decreased performance on SC401 and SC402. The improvement on the most difficult subject did not translate into an overall improvement.
+
+**Nighttime versus outside-window analysis.**
+
+The held-out predictions were divided into nighttime and outside-window subsets to investigate where P6 affected classification performance.
+
+| Nighttime metric (10,438 epochs) | P1 | P6 |
+|---|---:|---:|
+| Accuracy | 0.8160 | 0.8111 |
+| Cohen's kappa | 0.7130 | 0.7080 |
+| Macro-F1 | 0.6509 | 0.6526 |
+| Balanced accuracy | 0.6154 | 0.6210 |
+
+P6 slightly improved nighttime macro-F1 and balanced accuracy, but decreased accuracy and Cohen's kappa.
+
+Outside the selected window, all 6,250 ground-truth epochs were Wake. P1 correctly classified 6,167 epochs (98.67%), compared with 6,104 (97.66%) for P6. Consequently, P6 made 63 additional Wake classification errors outside the nighttime window.
+
+These results indicate that excluding daytime Wake epochs from training may reduce the model's ability to recognise Wake during those periods.
+
+**Validation and leakage considerations.**
+
+The timestamp alignment was validated on all six recordings. Epoch counts, label ordering and signal dimensions were preserved. P6 produced the same filtered EEG, EOG and EMG signals as P1 before training-epoch selection.
+
+The cropping decision used EDF clock metadata and fixed time boundaries rather than sleep-stage annotations. Training and testing were separated by subject, and all held-out epochs remained in the evaluation. Both nights of each subject belonged to the same fold.
+
+The 20:30–11:00 interval is a fixed clock window, not an individually verified lights-off interval. Its suitability may differ across recordings or datasets.
+
+**Decision and limitations.**
+
+P6 did not demonstrate a convincing overall improvement over P1. P1 is therefore retained as the preferred preprocessing and training configuration.
+
+P6 is retained as a reproducible experimental alternative because it directly addresses training-set class imbalance and provides evidence about the trade-off between reducing Wake dominance and maintaining Wake recognition.
+
+The evaluation involved only three development subjects. The window was investigated on these subjects and has not been independently validated on unseen recordings. The final holdout should remain untouched during method development.
+
+**Future work — Random Wake Undersampling.**
+
+A possible follow-up would be to retain all available sleep-stage epochs while randomly undersampling Wake epochs within each training fold. Unlike a fixed clock window, this could reduce Wake dominance without preferentially removing Wake from particular times of day.
+
+However, random undersampling would need to be applied exclusively to the training folds, with the held-out subjects kept intact. The sampling ratio would need to be selected using development data, and variability across random seeds should be evaluated. This experiment has not been performed.
+
+**Reproducibility.**
+
+Scripts:
+
+- `scripts/run_clock_cropping.py`
+- `scripts/analyze_clock_cropping.py`
+- `scripts/test_epoch_timestamps.py`
+- `src/sleepedf/preprocessing/epoch_timestamps.py`
+- `src/sleepedf/preprocessing/experiments.py`
+
+Results:
+
+- `results/clock_cropping/`
+
+
 ### Mother wavelet comparison and subject-level diagnostics - Lili - 2026-10-19
 
 **Motivation.**
@@ -170,7 +275,6 @@ Results:
 - `results/wavelet_comparison/loso/stage_distribution_by_subject.csv`
 - `results/wavelet_comparison/loso/` — diagnostic figures
 
-Commit: pending.
 
 ### Physiological preservation of sleep spindles - Lili - 2026-10-16
 
@@ -906,6 +1010,7 @@ add rows as the pipeline grows, and note the alternative you rejected.
 | 2. Preprocessing — P5 clipping QC | Retained as a quality-control safeguard: flag suspected EEG clipping without signal modification or epoch exclusion | Exclude flagged epochs; interpolate saturated samples; apply generic denoising; ignore suspected clipping | QC found 57/16,688 epochs with repeated recording-specific EEG extrema. P5 preserved all original data and produced exactly the same 16,688 predictions as P0. Flagging was preferred because the lost signal cannot be reliably reconstructed and exclusion of entire 30-second epochs was not justified by the observed short plateaus. | 2e | No — retained for signal-quality documentation, not performance improvement |
 | 2. Preprocessing — P5 additional EEG noise exploration | No additional automatic correction; preserve original signals | Correct abrupt EEG amplitude changes; remove suspected artifacts; correct baseline variations | Exploratory EEG/EOG morphology analysis identified ambiguous candidate events without a reliable criterion to distinguish artifacts from physiological activity. Additional corrections were therefore rejected to avoid unjustified signal modification. | 2e | No — exploratory diagnostics retained, but no new preprocessing transformation |
 | 2. Preprocessing — spindle preservation review | Retain P1 as the preferred preprocessing candidate; reconsider P2 denoising thresholds | P2 wavelet denoising under the current settings | P1 preserved all eight Raw spindle candidates at IoU ≥ 0.30, whereas P2 matched only five and retained 27.63% of sigma-band power on average. This provides a physiological reason to favor P1 beyond classification metrics alone. | 2f | Yes — P2 remains an investigated alternative, but its physiological preservation is now a documented concern requiring revision before further use |
+| 2. Preprocessing - P6 clock-based cropping | Retain P1 as the preferred configuration; document P6 as an alternative training-selection experiment | Fixed 20:30–11:00 training window versus full-night training | P6 slightly improved pooled balanced accuracy (0.6185→0.6251), but reduced pooled kappa (0.7516→0.7421) and outside-window Wake recall (98.67%→97.66%). The improvement was insufficient to replace P1. | 2h | No — P1 remains preferred; random Wake undersampling proposed but not tested |
 | 3. Feature extraction |  |  |  |  |  |
 | 4. Feature selection | *e.g.* `select="none"` | ANOVA `SelectKBest`, tree importances | 14 features vs. ~1 800 epochs — pruning risked more than it saved | 1 | *e.g.* **yes, iter 4** — `select_k=20` was a no-op (harness said so); switched to `k=6` |
 | 5. Classification, incl. `imbalance` | *e.g.* `imbalance="balanced"` | `"none"`, `"resample"`, `"threshold"` | *(if you kept the default, say you looked and why — a silent default earns nothing)* |  |  |
@@ -944,7 +1049,7 @@ between iterations. Record what actually happened.
 | 2e | Lili | Designed and implemented P5 suspected EEG clipping detection and recording-level quality flagging; analysed amplitude extrema and plateau durations across six recordings; validated preservation of all signals and labels; exported clipping QC results; performed LOSO evaluation and verified that all 16,688 P5 predictions were identical to P0; documented leakage considerations and limitations. Also investigated impulsive EEG disturbances and baseline variations, developed exploratory EEG/EOG event diagnostics, grouped candidate events into episodes, performed morphological verification, and documented the decision not to introduce additional automatic corrections. | |
 | 2f | Lili | Designed and implemented the spindle-preservation evaluation of P1 and P2; performed automatic spindle-candidate detection, sigma-band power and Hilbert-envelope comparisons, independent re-detection, one-to-one IoU matching, matching-threshold sensitivity analysis and epoch-boundary checks; generated quantitative CSV outputs and diagnostic figures; documented physiological limitations and the resulting preprocessing recommendation. | |
 | 2g | Lili | Designed and executed the four-mother-wavelet comparison; verified exact db4 baseline reproduction and feature/label alignment; performed three-fold LOSO Random Forest evaluation; analysed pooled and stage-specific confusion matrices, subject-level classification errors and ground-truth sleep-stage distributions; documented conclusions and follow-up investigations. | |
-
+| 2h | Lili | Implemented and validated EDF-based epoch timestamp alignment and fixed clock-based cropping; performed subject-wise LOSO P1/P6 comparisons with identical held-out test sets; analysed nighttime and outside-window performance, subject-level results and confusion matrices; documented limitations and proposed random Wake undersampling as future work. | |
 
 
 

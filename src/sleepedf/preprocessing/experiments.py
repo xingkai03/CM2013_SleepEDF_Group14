@@ -269,3 +269,111 @@ class TargetedDenoising:
             labels=np.asarray(recording.labels).copy(),
             meta=meta,
         )
+
+@dataclass
+class ClockBasedCropping:
+    """P6: label-independent nighttime epoch selection."""
+
+    start_time: str = "20:30"
+    end_time: str = "11:00"
+    action: Literal["flag", "exclude"] = "flag"
+
+    def detect(self, recording: Recording) -> np.ndarray:
+        """Return True for epochs fully inside the fixed clock window."""
+
+        from datetime import datetime, timedelta, time
+
+        meta = recording.meta
+
+        if "recording_start" not in meta:
+            raise ValueError("Missing recording_start metadata")
+
+        if "epoch_onsets_seconds" not in meta:
+            raise ValueError("Missing epoch_onsets_seconds metadata")
+
+        recording_start = datetime.fromisoformat(
+            meta["recording_start"]
+        )
+
+        onsets = np.asarray(
+            meta["epoch_onsets_seconds"],
+            dtype=float,
+        )
+
+        if len(onsets) != len(recording.labels):
+            raise ValueError("Timestamp/epoch count mismatch")
+
+        start_clock = time.fromisoformat(self.start_time)
+        end_clock = time.fromisoformat(self.end_time)
+
+        # Candidate night beginning on the PSG start date.
+        window_start = datetime.combine(
+            recording_start.date(),
+            start_clock,
+            tzinfo=recording_start.tzinfo,
+        )
+
+        window_end = datetime.combine(
+            recording_start.date() + timedelta(days=1),
+            end_clock,
+            tzinfo=recording_start.tzinfo,
+        )
+
+        # If the recording starts after the candidate night's end,
+        # move the window forward by one day.
+        if recording_start >= window_end:
+            window_start += timedelta(days=1)
+            window_end += timedelta(days=1)
+
+        epoch_starts = [
+            recording_start + timedelta(seconds=float(s))
+            for s in onsets
+        ]
+
+        epoch_duration = timedelta(seconds=30)
+
+        mask = np.array([
+            (start >= window_start)
+            and (start + epoch_duration <= window_end)
+            for start in epoch_starts
+        ], dtype=bool)
+
+        return mask
+
+    def transform(self, recording: Recording) -> Recording:
+        """Apply P1 bandpass and attach the P6 nighttime mask."""
+
+        # 1. Identify epochs inside the fixed clock window.
+        mask = self.detect(recording)
+
+        # 2. Apply exactly the same EEG filtering as P1.
+        filtered = EEGBandpass().transform(recording)
+
+        # 3. Preserve temporal selection information.
+        meta = dict(filtered.meta)
+
+        meta["clock_cropping"] = {
+            "start_time": self.start_time,
+            "end_time": self.end_time,
+            "action": self.action,
+            "epochs_before": int(len(mask)),
+            "epochs_selected": int(mask.sum()),
+            "epochs_outside": int((~mask).sum()),
+        }
+
+        meta["nighttime_epoch_mask"] = mask.copy()
+
+        # 4. Keep every epoch for subsequent LOSO evaluation.
+        if self.action == "flag":
+            return Recording(
+                group=filtered.group,
+                fs=filtered.fs,
+                epochs=filtered.epochs,
+                labels=filtered.labels,
+                meta=meta,
+            )
+
+        raise NotImplementedError(
+            "P6 exclusion must be performed on training folds, "
+            "not on complete recordings."
+        )

@@ -2,7 +2,7 @@
 from .base import NoPreprocessing, Preprocessor
 from .experiments import (
     BrokenSegmentHandling, EEGBandpass, SubjectRecordingNormalisation,
-    TargetedDenoising, WaveletDenoising,
+    TargetedDenoising, WaveletDenoising,ClockBasedCropping,
 )
 
 
@@ -13,6 +13,8 @@ def make_preprocessor(name="none") -> Preprocessor:
 
     if key in ("broken_segments", "p3"):
         return BrokenSegmentHandling(action="exclude")
+    if key in ("clock_cropping", "p6"):
+        return ClockBasedCropping()
 
     choices = {
         "none": NoPreprocessing,
@@ -25,6 +27,7 @@ def make_preprocessor(name="none") -> Preprocessor:
         "p4": SubjectRecordingNormalisation,
         "denoise_clipping": TargetedDenoising,
         "p5": TargetedDenoising,
+        "p6": ClockBasedCropping,
     }
 
     if key not in choices:
