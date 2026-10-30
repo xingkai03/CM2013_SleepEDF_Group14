@@ -43,6 +43,10 @@ spread is half a result.
 | 2f (spindle preservation) | 2026-10-16 | Physiological validation of P1 vs P2 on eight automatically detected spindle candidates in two N2 epochs from SC400; compared sigma power, Hilbert envelope, independent re-detection and temporal matching | N/A — diagnostic analysis only; no new LOSO classification run. P2 sigma-power retention: 27.63% (SD 17.98 pp); P1 re-detection: 8/8; P2: 5/8 at IoU ≥ 0.30 | P1 better preserved the selected spindle candidates; classification performance not reassessed | Retain P1 as the preferred preprocessing candidate; reconsider P2 thresholding before further use, subject to larger-scale validation | `217763e` |
 | 2g (mother wavelet comparison) | 2026-10-19 | Compared db4, sym4, coif1 and coif3 under identical 3-fold subject-wise LOSO conditions (16,688 epochs); verified exact reproduction of the original db4 P2 features | db4: mean κ 0.736 (sd 0.102, range 0.620–0.811); sym4: 0.730 (sd 0.104, range 0.611–0.806); coif1: 0.727 (sd 0.090, range 0.625–0.798); coif3: 0.738 (sd 0.103, range 0.621–0.813), across 3 subjects | No clear improvement — coif3 gained only +0.002 mean κ over db4 | Retain db4 as the P2 reference; reconsider coif3 on a larger development cohort. P1 remains the preferred preprocessing candidate | 510d041 |
 | 2h (P6 clock cropping) | 2026-10-21 | Fixed 20:30–11:00 clock-based selection for training epochs, combined with P1 band-pass; full held-out nights retained for testing | mean κ 0.735 (sd 0.102, range 0.620–0.816 across 3 subjects); P1: 0.743 (sd 0.114) | No, pooled κ 0.752→0.742; balanced accuracy 0.619→0.625, but better classification for some sleep stages | Retained as a reproducible, label-independent training-selection experiment; P1 remains preferred | `f8bbda7` |
+
+| 2i (large-scale P0) | 2026-10-29 | Re-evaluated the unprocessed baseline on 68 development subjects (133 recordings, 360,621 epochs), using fixed five-fold subject-wise GroupKFold to establish a larger-cohort reference | mean κ 0.726 (sd 0.118, range 0.231–0.895 across 68 subjects) | New large-cohort baseline; not directly comparable with three-subject LOSO results | Retained as the reference for controlled large-scale preprocessing comparisons | Pending |
+| 2j (large-scale P1) | 2026-10-29 | Re-evaluated EEG 0.5–40 Hz band-pass filtering on the same 68 subjects and fixed folds | mean κ 0.728 (sd 0.120, range 0.217–0.906 across 68 subjects) | Marginal improvement vs P0: pooled κ 0.728→0.731, macro-F1 0.651→0.655 | P1 remains preferred provisionally; improvement is small relative to subject variability | Pending |
+| 2k (large-scale P2) | 2026-10-30 | Re-evaluated EEG wavelet denoising using the current P2 configuration on the same 68 subjects and fixed folds | mean κ 0.687 (sd 0.129, range 0.216–0.886 across 68 subjects) | No: pooled κ 0.728→0.692 and macro-F1 0.651→0.624 vs P0 | Retained as a documented negative result; wavelet settings and physiological preservation require further investigation | Pending |
 | 4 |  |  |  | yes / no |  |  |
 | 4 |  |  |  | yes / no |  |  |
 | 4 |  |  |  | yes / no |  |  |
@@ -53,6 +57,121 @@ spread is half a result.
 *"Better" means better under the same honest harness — same split unit, same evaluation mode, same seed. A change that lowers the metric can still be the right call (simpler, faster, more robust across subjects, removes a leak). Say so in the column instead of quietly reverting it: "kept — κ fell 0.02 but the worst-subject κ rose from 0.18 to 0.31" is a stronger result than a silent higher mean.*
 
 ## Detailed log
+
+
+### Large-scale preprocessing comparison (P0, P1, P2) — Lili — 2026-10-29/30
+
+**Motivation.**
+
+Earlier preprocessing comparisons were conducted on three development subjects (SC400, SC401 and SC402). The limited cohort size made it difficult to assess whether the observed advantages of band-pass filtering and wavelet denoising generalised to a broader set of subjects.
+
+The objective of this experiment was to reassess P0, P1 and P2 on 68 development subjects while keeping the dataset, feature extraction, classifier and evaluation partitions fixed.
+
+**Dataset and experimental protocol.**
+
+- Dataset: Sleep-EDF, 68 development subjects, 133 PSG/hypnogram pairs.
+- Evaluated epochs: 360,621 labelled 30-second epochs.
+- Preprocessing:
+  - P0: no preprocessing.
+  - P1: EEG 0.5–40 Hz zero-phase Butterworth band-pass filtering.
+  - P2: EEG wavelet denoising using the current P2 configuration (db4 expected; configuration to be verified).
+- Features: 11 supplied features, unchanged across experiments.
+- Spectral estimation: Welch.
+- Classifier: Random Forest, 200 trees, balanced class weights, seed 0.
+- Feature selection: none.
+- Cropping: none.
+- Evaluation: five-fold subject-wise GroupKFold, with deterministic subject partitions shared across experiments.
+- Final holdout subjects: excluded from development experiments.
+
+Each subject's recordings were assigned to the same evaluation fold. The training and test epoch counts were identical across P0, P1 and P2.
+
+| Fold | Test subjects | Training epochs | Test epochs |
+|---|---:|---:|---:|
+| 1 | 14 | 290,405 | 70,216 |
+| 2 | 14 | 285,309 | 75,312 |
+| 3 | 14 | 286,790 | 73,831 |
+| 4 | 13 | 289,643 | 70,978 |
+| 5 | 13 | 290,337 | 70,284 |
+
+The saved checkpoint manifests were compared directly. All five subject-wise fold assignments were identical across P0, P1 and P2. This ensures that the preprocessing configurations were evaluated on the same held-out subjects, with identical training and test partitions.
+
+**Classification results.**
+
+| Metric | P0 — None | P1 — Band-pass | P2 — Wavelet |
+|---|---:|---:|---:|
+| Mean subject-wise Cohen's kappa | 0.726 | **0.728** | 0.687 |
+| SD of subject-wise kappa | 0.118 | 0.120 | 0.129 |
+| Subject-wise kappa range | 0.231–0.895 | 0.217–0.906 | 0.216–0.886 |
+| Pooled accuracy | 0.873 | **0.874** | 0.856 |
+| Pooled Cohen's kappa | 0.728 | **0.731** | 0.692 |
+| Pooled macro-F1 | 0.651 | **0.655** | 0.624 |
+| Pooled balanced accuracy | 0.628 | **0.634** | 0.605 |
+
+**Stage-wise recall.**
+
+Recall was calculated from the pooled confusion matrices, with true stages in rows and predicted stages in columns.
+
+| Stage | P0 | P1 | P2 |
+|---|---:|---:|---:|
+| W | 97.97% | 97.83% | 97.00% |
+| N1 | 13.08% | 13.78% | 11.02% |
+| N2 | 80.93% | 81.24% | 76.60% |
+| N3 | 66.67% | 66.75% | 65.75% |
+| REM | 55.35% | 57.25% | 52.33% |
+
+**Interpretation.**
+
+P1 achieved the highest pooled Cohen's kappa, macro-F1 and balanced accuracy. However, the improvement relative to P0 was small: +0.003 pooled kappa, +0.004 macro-F1 and +0.006 balanced accuracy.
+
+P2 performed worse than both P0 and P1 on all four pooled metrics. Relative to P0, pooled kappa decreased by 0.036 and macro-F1 decreased by 0.027. The most pronounced recall reductions occurred for N2 and REM.
+
+N1 remained difficult for all three configurations, with recall below 14%. The strong class imbalance, particularly the dominance of Wake epochs, makes accuracy alone an insufficient performance measure.
+
+The results do not establish that band-pass filtering is statistically superior to no preprocessing. Paired subject-level comparisons and uncertainty estimates are still needed.
+
+**Revisiting the earlier preprocessing decision.**
+
+The initial three-subject experiments suggested that wavelet denoising could improve classification relative to P0. This result did not generalise to the 68-subject development cohort under the current P2 settings.
+
+The earlier physiological analysis also found substantial attenuation of selected spindle-like EEG oscillations under db4 wavelet denoising.
+
+Taken together, these findings support retaining P1 as the provisional preprocessing choice while revisiting P2. The earlier mother-wavelet comparison identified coif3 as a possible alternative, but its small advantage over db4 on three subjects requires larger-cohort evaluation.
+
+**Limitations.**
+
+- The development cohort is not the final untouched holdout.
+- The experiments share the same development subjects and should not be treated as independent test results.
+- The P0/P1 difference is small relative to between-subject variability.
+- The effect of wavelet family and thresholding has not yet been isolated on the 68-subject cohort.
+- The conclusions apply to the current 11-feature Random Forest pipeline and may change with a different feature representation or classifier.
+
+**Reproducibility.**
+
+Runner:
+
+`scripts/internal/run_baseline_large.py`
+
+Command template:
+
+```powershell
+uv run --locked python -B scripts/internal/run_baseline_large.py --cache-dir "G:\My Drive\CM2013\data_cache\sleep_edf\physionet-sleep-data" --n-subjects 68 --preprocess <none|bandpass|wavelet>
+```
+
+Saved results:
+
+- P0: `results/real__P0_20261029T140444314080Z/`
+- P1: `results/real__P1_20261029T161038916244Z/`
+- P2: `results/real__P2_20261030T112346818136Z/`
+
+Each run includes saved evaluation results, provenance information, checkpoint manifests and fold prediction files.
+
+**Decision.**
+
+Retain P1 as the current preferred preprocessing configuration, with the qualification that its improvement over P0 is marginal. Do not select the current P2 configuration on classification performance alone. Re-evaluate coif3 and consider alternative denoising thresholds before making a final preprocessing recommendation.
+
+Commit: pending.
+
+
 ### P6 - Clock-based cropping and subject-wise evaluation - Lili - 2026-10-21
 
 **Motivation.**
@@ -1012,6 +1131,7 @@ add rows as the pipeline grows, and note the alternative you rejected.
 | 2. Preprocessing — P5 additional EEG noise exploration | No additional automatic correction; preserve original signals | Correct abrupt EEG amplitude changes; remove suspected artifacts; correct baseline variations | Exploratory EEG/EOG morphology analysis identified ambiguous candidate events without a reliable criterion to distinguish artifacts from physiological activity. Additional corrections were therefore rejected to avoid unjustified signal modification. | 2e | No — exploratory diagnostics retained, but no new preprocessing transformation |
 | 2. Preprocessing — spindle preservation review | Retain P1 as the preferred preprocessing candidate; reconsider P2 denoising thresholds | P2 wavelet denoising under the current settings | P1 preserved all eight Raw spindle candidates at IoU ≥ 0.30, whereas P2 matched only five and retained 27.63% of sigma-band power on average. This provides a physiological reason to favor P1 beyond classification metrics alone. | 2f | Yes — P2 remains an investigated alternative, but its physiological preservation is now a documented concern requiring revision before further use |
 | 2. Preprocessing - P6 clock-based cropping | Retain P1 as the preferred configuration; document P6 as an alternative training-selection experiment | Fixed 20:30–11:00 training window versus full-night training | P6 slightly improved pooled balanced accuracy (0.6185→0.6251), but reduced pooled kappa (0.7516→0.7421) and outside-window Wake recall (98.67%→97.66%). The improvement was insufficient to replace P1. | 2h | No — P1 remains preferred; random Wake undersampling proposed but not tested |
+| 2. Preprocessing, large-cohort revision | P1 provisionally retained; P2 db4 not selected | P0 none; P1 band-pass; P2 wavelet | On 68 subjects, P1 achieved pooled κ 0.731 versus 0.728 for P0, whereas P2 decreased to 0.692. This revises the earlier positive interpretation of P2 on three subjects; coif3 remains to be evaluated. | 2i–2k | Yes — earlier P2 assessment revised after larger-cohort evidence |
 | 3. Feature extraction |  |  |  |  |  |
 | 4. Feature selection | *e.g.* `select="none"` | ANOVA `SelectKBest`, tree importances | 14 features vs. ~1 800 epochs — pruning risked more than it saved | 1 | *e.g.* **yes, iter 4** — `select_k=20` was a no-op (harness said so); switched to `k=6` |
 | 5. Classification, incl. `imbalance` | *e.g.* `imbalance="balanced"` | `"none"`, `"resample"`, `"threshold"` | *(if you kept the default, say you looked and why — a silent default earns nothing)* |  |  |
@@ -1031,6 +1151,7 @@ diagnose from.
 |---|---|---|---|---|
 | 1 | *e.g.* worst-subject κ 0.14 vs. mean 0.61 | stage 2 — no per-recording normalisation | z-scored band powers within each recording | mean κ 0.61 → 0.59, **worst subject 0.14 → 0.38** — kept |
 | 2 | P2 db4 attenuated selected spindle candidates and matched only 5/8 raw candidates, prompting a review of its preprocessing settings | Stage 2 — choice of mother wavelet for P2 | Revisited the db4 choice by testing sym4, coif1 and coif3 under identical LOSO conditions | coif3 increased pooled kappa from 0.743 to 0.745 but reduced macro-F1 from 0.648 to 0.647; db4 was retained as the P2 reference, and P1 remained preferred |
+| 3 | Large-cohort P2 wavelet performance decreased to pooled κ 0.692, compared with 0.728 for P0 | Earlier three-subject assessment that P2 denoising was beneficial relative to P0 | Reassessed the same preprocessing approaches on 68 development subjects using five fixed subject-wise folds; retained P1 provisionally and planned coif3 reassessment | P2 pooled κ 0.743 on the earlier three-subject course-environment experiment versus 0.692 on 68 subjects; these are different cohorts, not a paired performance change |
 
 
 
@@ -1051,6 +1172,7 @@ between iterations. Record what actually happened.
 | 2f | Lili | Designed and implemented the spindle-preservation evaluation of P1 and P2; performed automatic spindle-candidate detection, sigma-band power and Hilbert-envelope comparisons, independent re-detection, one-to-one IoU matching, matching-threshold sensitivity analysis and epoch-boundary checks; generated quantitative CSV outputs and diagnostic figures; documented physiological limitations and the resulting preprocessing recommendation. | |
 | 2g | Lili | Designed and executed the four-mother-wavelet comparison; verified exact db4 baseline reproduction and feature/label alignment; performed three-fold LOSO Random Forest evaluation; analysed pooled and stage-specific confusion matrices, subject-level classification errors and ground-truth sleep-stage distributions; documented conclusions and follow-up investigations. | |
 | 2h | Lili | Implemented and validated EDF-based epoch timestamp alignment and fixed clock-based cropping; performed subject-wise LOSO P1/P6 comparisons with identical held-out test sets; analysed nighttime and outside-window performance, subject-level results and confusion matrices; documented limitations and proposed random Wake undersampling as future work. | |
+| 2i–2k | Lili | Executed and analysed large-scale P0/P1/P2 preprocessing comparisons on 68 development subjects; used reproducible five-fold subject-wise evaluation, saved fold checkpoints and provenance, compared pooled and subject-wise metrics, and revisited the earlier P2 decision | |
 
 
 
