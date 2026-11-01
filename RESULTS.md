@@ -46,9 +46,9 @@ spread is half a result.
 | 2i (large-scale P0) | 2026-10-29 | Re-evaluated the unprocessed baseline on 68 development subjects (133 recordings, 360,621 epochs), using fixed five-fold subject-wise GroupKFold to establish a larger-cohort reference | mean κ 0.726 (sd 0.118, range 0.231–0.895 across 68 subjects) | New large-cohort baseline; not directly comparable with three-subject LOSO results | Retained as the reference for controlled large-scale preprocessing comparisons | `4ccdbbc` |
 | 2j (large-scale P1) | 2026-10-29 | Re-evaluated EEG 0.5–40 Hz band-pass filtering on the same 68 subjects and fixed folds | mean κ 0.728 (sd 0.120, range 0.217–0.906 across 68 subjects) | Marginal improvement vs P0: pooled κ 0.728→0.731, macro-F1 0.651→0.655 | P1 remains preferred provisionally; improvement is small relative to subject variability | `4ccdbbc` |
 | 2k (large-scale P2) | 2026-10-30 | Re-evaluated EEG wavelet denoising using the current P2 configuration on the same 68 subjects and fixed folds | mean κ 0.687 (sd 0.129, range 0.216–0.886 across 68 subjects) | No: pooled κ 0.728→0.692 and macro-F1 0.651→0.624 vs P0 | Retained as a documented negative result; wavelet settings and physiological preservation require further investigation | `4ccdbbc` |
-| 2l (integrated preprocessing QC) | 2026-10-31 | Integrated P3 near-flat and P5 suspected-clipping flags with P1 band-pass in the SleepEDFTrack pipeline; verified that QC metadata is preserved without changing signals, labels, epochs or extracted features | N/A — integration validation, no new classifier evaluation; P1 reference: mean subject κ 0.728 (SD 0.120, range 0.217–0.906 across 68 subjects) | No classification change expected: QC flags are metadata only | Retained to provide reproducible signal-quality monitoring without excluding potentially valid epochs | Pending commit |
-| 2m (68-subject QC and error analysis) | 2026-11-01 | Applied P3/P5 flag-only QC to 133 recordings and aligned flagged epochs with P1 out-of-fold predictions across 68 development subjects | P1 reference: mean subject κ 0.728 (SD 0.120, range 0.217–0.906); 3,630/360,621 epochs flagged (1.007%); flagged error 3.609% vs unflagged 12.719% | No new classifier evaluation; 94.1% of flagged epochs were Wake, explaining much of the aggregate difference | Retained QC as diagnostic metadata; stage-specific analysis showed higher error among flagged N2/REM epochs, but flagged counts were small | Pending commit |
-| 2n (combined P1+P2, 68 subjects) | 2026-11-01 | Evaluated sequential EEG 0.5–40 Hz band-pass filtering followed by db4 wavelet denoising on the same 68 development subjects and fixed five-fold subject-wise GroupKFold splits | mean subject κ 0.696 (SD 0.137, range 0.169–0.914 across 68 subjects) | No — pooled κ decreased from 0.731 (P1) to 0.702 (P1+P2); 53/68 subjects deteriorated | Retained as a documented negative experiment; the combined preprocessing is not selected for the current 11-feature Random Forest pipeline | Pending commit |
+| 2l (integrated preprocessing QC) | 2026-10-31 | Integrated P3 near-flat and P5 suspected-clipping flags with P1 band-pass in the SleepEDFTrack pipeline; verified that QC metadata is preserved without changing signals, labels, epochs or extracted features | N/A — integration validation, no new classifier evaluation; P1 reference: mean subject κ 0.728 (SD 0.120, range 0.217–0.906 across 68 subjects) | No classification change expected: QC flags are metadata only | Retained to provide reproducible signal-quality monitoring without excluding potentially valid epochs | `66aa8ae` |
+| 2m (68-subject QC and error analysis) | 2026-11-01 | Applied P3/P5 flag-only QC to 133 recordings and aligned flagged epochs with P1 out-of-fold predictions across 68 development subjects | P1 reference: mean subject κ 0.728 (SD 0.120, range 0.217–0.906); 3,630/360,621 epochs flagged (1.007%); flagged error 3.609% vs unflagged 12.719% | No new classifier evaluation; 94.1% of flagged epochs were Wake, explaining much of the aggregate difference | Retained QC as diagnostic metadata; stage-specific analysis showed higher error among flagged N2/REM epochs, but flagged counts were small | `66aa8ae` |
+| 2n (combined P1+P2, 68 subjects) | 2026-11-01 | Evaluated sequential EEG 0.5–40 Hz band-pass filtering followed by db4 wavelet denoising on the same 68 development subjects and fixed five-fold subject-wise GroupKFold splits | mean subject κ 0.696 (SD 0.137, range 0.169–0.914 across 68 subjects) | No — pooled κ decreased from 0.731 (P1) to 0.702 (P1+P2); 53/68 subjects deteriorated | Retained as a documented negative experiment; the combined preprocessing is not selected for the current 11-feature Random Forest pipeline | `66aa8ae` |
 | 4 |  |  |  | yes / no |  |  |
 | 4 |  |  |  | yes / no |  |  |
 | 4 |  |  |  | yes / no |  |  |
@@ -145,7 +145,7 @@ Saved results:
 - P1 + P2 db4: `results/real__P1_P2_db4_20261101T171446625914Z/`
 - Paired comparison: `results/P1_vs_P1_P2_subject_comparison.csv`
 
-Commit: pending.
+Commit: `66aa8ae`
 
 ### Integrated preprocessing and full-cohort quality-control analysis, Lili, 2026-10-31 / 2026-11-01
 
@@ -256,7 +256,7 @@ Results:
 - `results/qc_vs_errors_P1/by_recording.csv`
 - P1 reference: `results/real__P1_20261029T161038916244Z/`
 
-Commit: pending.
+Commit: `66aa8ae`
 
 
 ### Large-scale preprocessing comparison (P0, P1, P2), Lili, 2026-10-29/30
