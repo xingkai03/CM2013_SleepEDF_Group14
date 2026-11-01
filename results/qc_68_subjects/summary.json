@@ -1,0 +1,31 @@
+{
+  "created_utc": "2026-10-31T18:16:41.027886+00:00",
+  "dataset": "Sleep-EDF development subjects only",
+  "subjects": 68,
+  "recordings": 133,
+  "counts": {
+    "epochs": 360621,
+    "p3": 748,
+    "p5": 2882,
+    "both": 0,
+    "either": 3630
+  },
+  "percent_epochs_p3": 0.20741997831518408,
+  "percent_epochs_p5": 0.7991769752732093,
+  "percent_epochs_either": 1.0065969535883934,
+  "methods": {
+    "p3": {
+      "method": "near_flat_eeg_eog",
+      "action": "flag",
+      "eeg_std_threshold_v": 4.820492569885e-06,
+      "eog_std_threshold_v": 7.200175602286e-06
+    },
+    "p5": {
+      "method": "recording_extrema_plateau",
+      "action": "flag_only",
+      "min_plateau_samples": 3,
+      "confirmed_clipping": false
+    }
+  },
+  "note": "Raw-signal QC flags only. No epoch exclusion, signal reconstruction, feature extraction, or model fitting. P3/P5 are indicators, not validated artifact ground truth."
+}

@@ -93,9 +93,22 @@ def build_parser():
     )
     parser.add_argument(
         "--preprocess",
-        choices=["none","bandpass", "wavelet","broken_segments","denoise_clipping"],
+        choices=[
+            "none",
+            "bandpass",
+            "wavelet",
+            "bandpass_wavelet",
+            "broken_segments",
+            "denoise_clipping",
+        ],
         default="none",
         help="Preprocessing experiment: none=P0, bandpass=P1 EEG 0.5-40Hz, wavelet=P2 EEG wavelet denoising, broken_segments=P3 exclude objectively identified near-flat epochs (EEG+EOG), denoise_clipping=P5 flag suspected EEG clipping.",
+    )
+    parser.add_argument(
+        "--wavelet",
+        choices=["db4", "coif3"],
+        default="db4",
+        help="Wavelet family for --preprocess wavelet (default: db4).",
     )
     parser.add_argument("--resume", type=Path, metavar="RESULT_DIR",
                         help="Resume a run using an existing results directory with checkpoints.")
@@ -298,9 +311,12 @@ def run(args, parser, *, clf=None, classifier_info=None, seed=0,
         "none": "P0",
         "bandpass": "P1",
         "wavelet": "P2",
+        "bandpass_wavelet": "P1_P2",
         "broken_segments": "P3",
         "denoise_clipping": "P5",
     }[args.preprocess]
+    if args.preprocess in ("wavelet", "bandpass_wavelet"):
+        output_tag = args.wavelet
     tag = f"_{output_tag}" if output_tag else ""
     output = (args.resume or args.output_dir or ROOT / "results" /
               f"real__{experiment}{tag}_{started.strftime('%Y%m%dT%H%M%S%fZ')}").resolve()
@@ -311,7 +327,11 @@ def run(args, parser, *, clf=None, classifier_info=None, seed=0,
 
     cfg = {"seed": seed, "preprocess": args.preprocess, "spectral_method": "welch",
            "select": "none"}
+    if args.preprocess in ("wavelet", "bandpass_wavelet"):
+        cfg["wavelet"] = args.wavelet
     track = SleepEDFTrack()
+    if args.preprocess in ("wavelet", "bandpass_wavelet"):
+        track.declare_cfg_keys("wavelet")
 
     print(
         f"Processing {len(psgs)} PSG/hypnogram pairs sequentially from {cache}",
@@ -543,7 +563,7 @@ def run(args, parser, *, clf=None, classifier_info=None, seed=0,
         "python": platform.python_version(),
         "packages": {p: version(p) for p in dict.fromkeys(
             ("numpy", "scipy", "scikit-learn", "mne") + tuple(extra_packages) +
-            (("PyWavelets",) if args.preprocess == "wavelet" else ()))},
+            (("PyWavelets",) if args.preprocess in ("wavelet", "bandpass_wavelet") else ()))},
         "source_head": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
         "working_tree_status": subprocess.check_output(["git", "status", "--short"], cwd=ROOT, text=True),
         "source_sha256": {str(p.relative_to(ROOT)): sha256(p) for p in sorted(

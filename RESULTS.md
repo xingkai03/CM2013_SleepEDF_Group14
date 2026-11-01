@@ -18,7 +18,7 @@ For a guide to the saved files and comparisons, see [the results index](results/
 
 **Track:** `sleep_edf` ·
 **Split unit:** `subject` · **Primary metric:** Cohen's kappa ·
-**Evaluation mode:** new-subject (LOSO; five synthetic subjects / three real subjects)
+**Evaluation mode:** subject-wise LOSO for early experiments (3 real subjects); fixed five-fold subject-wise GroupKFold for large-scale development experiments (68 subjects). Final holdout excluded from development.
 
 ## Iteration log
 
@@ -46,6 +46,9 @@ spread is half a result.
 | 2i (large-scale P0) | 2026-10-29 | Re-evaluated the unprocessed baseline on 68 development subjects (133 recordings, 360,621 epochs), using fixed five-fold subject-wise GroupKFold to establish a larger-cohort reference | mean κ 0.726 (sd 0.118, range 0.231–0.895 across 68 subjects) | New large-cohort baseline; not directly comparable with three-subject LOSO results | Retained as the reference for controlled large-scale preprocessing comparisons | `4ccdbbc` |
 | 2j (large-scale P1) | 2026-10-29 | Re-evaluated EEG 0.5–40 Hz band-pass filtering on the same 68 subjects and fixed folds | mean κ 0.728 (sd 0.120, range 0.217–0.906 across 68 subjects) | Marginal improvement vs P0: pooled κ 0.728→0.731, macro-F1 0.651→0.655 | P1 remains preferred provisionally; improvement is small relative to subject variability | `4ccdbbc` |
 | 2k (large-scale P2) | 2026-10-30 | Re-evaluated EEG wavelet denoising using the current P2 configuration on the same 68 subjects and fixed folds | mean κ 0.687 (sd 0.129, range 0.216–0.886 across 68 subjects) | No: pooled κ 0.728→0.692 and macro-F1 0.651→0.624 vs P0 | Retained as a documented negative result; wavelet settings and physiological preservation require further investigation | `4ccdbbc` |
+| 2l (integrated preprocessing QC) | 2026-10-31 | Integrated P3 near-flat and P5 suspected-clipping flags with P1 band-pass in the SleepEDFTrack pipeline; verified that QC metadata is preserved without changing signals, labels, epochs or extracted features | N/A — integration validation, no new classifier evaluation; P1 reference: mean subject κ 0.728 (SD 0.120, range 0.217–0.906 across 68 subjects) | No classification change expected: QC flags are metadata only | Retained to provide reproducible signal-quality monitoring without excluding potentially valid epochs | Pending commit |
+| 2m (68-subject QC and error analysis) | 2026-11-01 | Applied P3/P5 flag-only QC to 133 recordings and aligned flagged epochs with P1 out-of-fold predictions across 68 development subjects | P1 reference: mean subject κ 0.728 (SD 0.120, range 0.217–0.906); 3,630/360,621 epochs flagged (1.007%); flagged error 3.609% vs unflagged 12.719% | No new classifier evaluation; 94.1% of flagged epochs were Wake, explaining much of the aggregate difference | Retained QC as diagnostic metadata; stage-specific analysis showed higher error among flagged N2/REM epochs, but flagged counts were small | Pending commit |
+| 2n (combined P1+P2, 68 subjects) | 2026-11-01 | Evaluated sequential EEG 0.5–40 Hz band-pass filtering followed by db4 wavelet denoising on the same 68 development subjects and fixed five-fold subject-wise GroupKFold splits | mean subject κ 0.696 (SD 0.137, range 0.169–0.914 across 68 subjects) | No — pooled κ decreased from 0.731 (P1) to 0.702 (P1+P2); 53/68 subjects deteriorated | Retained as a documented negative experiment; the combined preprocessing is not selected for the current 11-feature Random Forest pipeline | Pending commit |
 | 4 |  |  |  | yes / no |  |  |
 | 4 |  |  |  | yes / no |  |  |
 | 4 |  |  |  | yes / no |  |  |
@@ -57,8 +60,206 @@ spread is half a result.
 
 ## Detailed log
 
+### Combined P1 + P2 preprocessing: large-scale evaluation and paired subject analysis, Lili, 2026-11-01
 
-### Large-scale preprocessing comparison (P0, P1, P2) — Lili — 2026-10-29/30
+**Motivation.**
+
+The previous 68-subject experiments showed that P1 band-pass filtering marginally outperformed the unprocessed baseline, whereas P2 db4 wavelet denoising reduced classification performance. A combined P1 + P2 configuration was evaluated to investigate whether applying band-pass filtering before wavelet denoising could improve downstream sleep-stage classification.
+
+**Experimental protocol.**
+
+The experiment used 68 development subjects, 133 PSG/hypnogram recordings and 360,621 labelled 30-second epochs. The final holdout subjects were excluded.
+
+The combined preprocessing applied EEG 0.5–40 Hz zero-phase Butterworth band-pass filtering followed by db4 wavelet denoising with the existing P2 settings. EOG and EMG remained unchanged.
+
+All configurations used the same 11 baseline features, Welch spectral estimation, Random Forest classifier (200 trees, balanced class weights, seed 0), and five-fold subject-wise GroupKFold evaluation.
+
+**Classification results.**
+
+| Metric | P1 | P2 db4 | P1 + P2 db4 |
+|---|---:|---:|---:|
+| Mean subject-wise Cohen's κ | 0.728 | 0.687 | 0.696 |
+| SD of subject-wise κ | 0.120 | 0.129 | 0.137 |
+| Pooled accuracy | 0.874 | 0.856 | 0.860 |
+| Pooled Cohen's κ | 0.731 | 0.692 | 0.702 |
+| Pooled macro-F1 | 0.655 | 0.624 | 0.635 |
+| Pooled balanced accuracy | 0.634 | 0.605 | 0.614 |
+
+**Stage-wise recall.**
+
+| Stage | P1 | P2 db4 | P1 + P2 db4 |
+|---|---:|---:|---:|
+| W | 97.83% | 97.00% | 97.10% |
+| N1 | 13.78% | 11.02% | 12.20% |
+| N2 | 81.24% | 76.60% | 77.80% |
+| N3 | 66.75% | 65.75% | 66.17% |
+| REM | 57.25% | 52.33% | 53.94% |
+
+P1 achieved the highest recall for all five sleep stages. Compared with P1, the combined preprocessing reduced N2 recall by approximately 3.44 percentage points and REM recall by 3.31 percentage points.
+
+**Paired subject-level analysis.**
+
+The saved out-of-fold predictions from P1 and P1 + P2 were aligned using original test-epoch indices. Exact equality of epoch indices, ground-truth labels and subject assignments was verified across all five folds.
+
+The comparison included 360,621 epochs and 68 subjects.
+
+- Improved subjects: 15/68.
+- Degraded subjects: 53/68.
+- Unchanged subjects: 0.
+- Mean paired difference in subject-wise κ (P1+P2 minus P1): −0.0321.
+- Median paired difference: −0.0193.
+- SD of paired differences: 0.0553.
+
+The largest decreases were observed for SC419 (−0.250), SC436 (−0.220) and SC434 (−0.177). The largest improvement was observed for SC477 (+0.069).
+
+The degradation affected 53 of 68 subjects, indicating that the lower pooled performance was not caused solely by a few unusually difficult recordings. No formal confidence interval or hypothesis test was calculated for the paired differences.
+
+**Interpretation and revision.**
+
+The combined P1 + P2 configuration performed better than P2 alone but worse than P1 alone on all reported pooled classification metrics and all five stage-specific recall values.
+
+The earlier spindle-candidate preservation analysis found substantial sigma-power attenuation under the current db4 denoising settings. This provides a plausible physiological explanation for some classification losses, particularly for N2, but the present experiment does not establish causality.
+
+These findings revise the earlier interpretation of wavelet denoising as a potentially beneficial preprocessing step based on three-subject experiments.
+
+**Decision.**
+
+Retain P1 as the provisional signal-processing configuration for the current 11-feature Random Forest pipeline. Do not include the tested P1 + P2 db4 combination in the selected pipeline.
+
+Retain P3/P5 as flag-only quality-control indicators. Their integration does not constitute a classification improvement because the flags are not used as model inputs.
+
+**Limitations and future work.**
+
+- The conclusions apply to the current feature representation, classifier and wavelet settings.
+- Alternative wavelet thresholds or feature representations could produce different results and would require new controlled experiments.
+- The development folds have been used for multiple model comparisons; the final holdout must remain untouched until the pipeline is frozen.
+- The paired subject-level analysis is descriptive; uncertainty estimates have not yet been calculated.
+
+**Reproducibility.**
+
+Runner: `scripts/internal/run_baseline_large.py`
+
+Saved results:
+- P1: `results/real__P1_20261029T161038916244Z/`
+- P2 db4: `results/real__P2_20261030T112346818136Z/`
+- P1 + P2 db4: `results/real__P1_P2_db4_20261101T171446625914Z/`
+- Paired comparison: `results/P1_vs_P1_P2_subject_comparison.csv`
+
+Commit: pending.
+
+### Integrated preprocessing and full-cohort quality-control analysis, Lili, 2026-10-31 / 2026-11-01
+
+**Motivation.**
+
+Following the large-scale preprocessing comparison, P1 was retained as the provisional signal-processing configuration. P3 and P5 were then integrated as quality-control (QC) indicators to identify potentially problematic EEG/EOG epochs without automatically removing data or modifying the extracted features.
+
+The objective was to verify technical compatibility, quantify QC flags across the full development cohort, and investigate whether flagged epochs were associated with increased classification errors.
+
+**Pipeline integration.**
+
+The integrated configuration applies:
+
+1. P3: detection of near-flat EEG/EOG epochs using fixed standard-deviation thresholds, with `action="flag"`.
+2. P5: detection of suspected EEG clipping using recording-specific extrema and plateaus of at least three consecutive samples, with `action="flag"`.
+3. P1: EEG 0.5–40 Hz zero-phase Butterworth band-pass filtering.
+4. Baseline extraction of 11 features, followed by the existing Random Forest classifier.
+
+P3 and P5 store detection masks and summaries in recording metadata. They do not modify the signal, exclude epochs, or provide additional features to the classifier.
+
+**Technical integration validation.**
+
+The integrated configuration was tested on recording `SC4001E0`, containing 2,650 epochs.
+
+- EEG after P1 was identical with and without QC enabled.
+- All 2,650 epochs were preserved.
+- Labels and subject assignments remained identical.
+- Feature matrices had shape `(2650, 11)` and were identical between P1-only and P1+QC configurations.
+- All extracted features were finite.
+- P3 and P5 detection metadata were present.
+- P5 flagged two epochs in this recording.
+
+This confirms that QC integration does not alter the baseline feature representation in the tested recording. It does not constitute a new full-cohort classifier evaluation.
+
+**Full-cohort quality-control results.**
+
+QC detection was performed on raw signals from 68 development subjects, corresponding to 133 recordings and 360,621 labelled 30-second epochs.
+
+| QC indicator | Flagged epochs | Percentage |
+|---|---:|---:|
+| P3 — near-flat EEG/EOG | 748 | 0.207% |
+| P5 — suspected clipping | 2,882 | 0.799% |
+| Both P3 and P5 | 0 | 0.000% |
+| Either P3 or P5 | 3,630 | 1.007% |
+
+No epochs were excluded, and no signal reconstruction was performed. The flags represent heuristic indicators, not confirmed acquisition artifacts.
+
+**Association with classification errors.**
+
+The QC masks were aligned with the existing P1 out-of-fold predictions from five subject-wise GroupKFold checkpoints. Alignment checks covered all 360,621 epochs and 133 recordings.
+
+| Category | Epochs | Errors | Error rate |
+|---|---:|---:|---:|
+| All epochs | 360,621 | 45,538 | 12.628% |
+| P3 flagged | 748 | 64 | 8.556% |
+| P5 flagged | 2,882 | 67 | 2.325% |
+| Either flagged | 3,630 | 131 | 3.609% |
+| Unflagged | 356,991 | 45,407 | 12.719% |
+
+Flagged epochs had a lower aggregate error rate than unflagged epochs. However, 3,415 of the 3,630 flagged epochs (94.1%) were Wake, a stage with particularly low classification error in this evaluation.
+
+**Stage-specific error analysis.**
+
+| Stage | Flagged epochs | Flagged error rate | Unflagged error rate |
+|---|---:|---:|---:|
+| W | 3,415 | 0.56% | 2.19% |
+| N1 | 48 | 75.00% | 86.25% |
+| N2 | 123 | 37.40% | 18.72% |
+| N3 | 7 | 57.14% | 33.23% |
+| REM | 37 | 70.27% | 42.71% |
+
+Flagged N2 and REM epochs showed higher error rates than their unflagged counterparts, whereas the aggregate flagged error rate was dominated by Wake epochs. The small numbers of flagged non-Wake epochs limit the strength of these comparisons.
+
+These results establish an association, not a causal effect of signal anomalies on classification errors.
+
+**Decision.**
+
+Retain P1 as the provisional signal-processing configuration and integrate P3/P5 as non-destructive QC indicators.
+
+The earlier P3 exclusion strategy is not used in the current integrated pipeline. Automatic exclusion is not justified by the present full-cohort QC and classification-error analysis.
+
+**Limitations and next steps.**
+
+- QC detection rules have not been validated against expert-annotated artifacts.
+- The stage-specific comparison is descriptive and does not adjust for recording-level or subject-level clustering.
+- P5 uses full-recording extrema and is therefore a retrospective QC method rather than an online detector.
+- QC flags are not used as classifier features.
+- Evaluate a combined P1 + P2 signal-processing configuration on the development cohort.
+- Preserve the final holdout for evaluation of the selected pipeline.
+
+**Reproducibility.**
+
+Scripts:
+
+- `src/sleepedf/track.py`
+- `src/sleepedf/preprocessing/experiments.py`
+- `scripts/internal/run_quality_control.py`
+- `scripts/internal/analyze_qc_vs_errors.py`
+
+Results:
+
+- `results/qc_68_subjects/summary.json`
+- `results/qc_68_subjects/recordings.csv`
+- `results/qc_68_subjects/flagged_epochs.json`
+- `results/qc_vs_errors_P1/summary.json`
+- `results/qc_vs_errors_P1/overall.csv`
+- `results/qc_vs_errors_P1/by_stage.csv`
+- `results/qc_vs_errors_P1/by_recording.csv`
+- P1 reference: `results/real__P1_20261029T161038916244Z/`
+
+Commit: pending.
+
+
+### Large-scale preprocessing comparison (P0, P1, P2), Lili, 2026-10-29/30
 
 **Motivation.**
 
@@ -1125,12 +1326,14 @@ add rows as the pipeline grows, and note the alternative you rejected.
 | 1. Data loading | *e.g.* 8 subjects, both nights | more subjects, one night each | subject-level split needs both nights inside one group | 1 | — |
 | 2. Preprocessing — P1 band-pass filtering| EEG 0.5–40 Hz zero-phase Butterworth band-pass | No preprocessing; 50 Hz notch; wavelet denoising | P1 improved mean subject kappa from 0.704 to 0.737 and macro-F1 from 0.648 to 0.683 without increasing between-subject variability; no 50 Hz notch was justified by QC | 2b | No — current choice, subject to later revision |
 | 2. Preprocessing — P2 wavelet denoising | Retained as an alternative preprocessing candidate alongside P1 | P2: EEG db4 wavelet denoising with automatic level (max 5), soft thresholding and automatic per-epoch threshold | P2 improved over P0 and achieved a slightly higher mean subject kappa than P1 (0.743 vs 0.737). However, the gain was small (+0.006), while macro-F1 decreased from 0.683 to 0.677, balanced accuracy from 0.680 to 0.666, and N1 recall from 0.416 to 0.315. P1 was therefore retained because its performance was more balanced across sleep stages. | 2c | Yes — retained alongside P1 after course-environment reproduction |
-| 2. Preprocessing — P3 broken-segment handling | Retained as a data-quality safeguard: exclude complete epochs with simultaneous near-flat EEG and EOG | Flag detected epochs without exclusion; no broken-segment handling | QC identified a sustained simultaneous EEG/EOG near-flat event in SC4012E0; the fixed label-independent rule excluded only the three fully affected epochs (2845–2847). Although mean subject kappa decreased from 0.704 to 0.694 vs P0, the rule was retained because objectively broken epochs should not be treated as valid physiological signal and the same predefined rule can handle similar dropout in additional recordings. | 2d | No — retained for data quality, not classification improvement |
+| 2. Preprocessing — P3 broken-segment handling | Retained as a data-quality safeguard: exclude complete epochs with simultaneous near-flat EEG and EOG | Flag detected epochs without exclusion; no broken-segment handling | QC identified a sustained simultaneous EEG/EOG near-flat event in SC4012E0; the fixed label-independent rule excluded only the three fully affected epochs (2845–2847). Although mean subject kappa decreased from 0.704 to 0.694 vs P0, the rule was retained because objectively broken epochs should not be treated as valid physiological signal and the same predefined rule can handle similar dropout in additional recordings. | 2d | Yes, revised in 2l–2m: flag-only QC replaced automatic exclusion in the integrated pipeline. |
 | 2. Preprocessing — P5 clipping QC | Retained as a quality-control safeguard: flag suspected EEG clipping without signal modification or epoch exclusion | Exclude flagged epochs; interpolate saturated samples; apply generic denoising; ignore suspected clipping | QC found 57/16,688 epochs with repeated recording-specific EEG extrema. P5 preserved all original data and produced exactly the same 16,688 predictions as P0. Flagging was preferred because the lost signal cannot be reliably reconstructed and exclusion of entire 30-second epochs was not justified by the observed short plateaus. | 2e | No — retained for signal-quality documentation, not performance improvement |
 | 2. Preprocessing — P5 additional EEG noise exploration | No additional automatic correction; preserve original signals | Correct abrupt EEG amplitude changes; remove suspected artifacts; correct baseline variations | Exploratory EEG/EOG morphology analysis identified ambiguous candidate events without a reliable criterion to distinguish artifacts from physiological activity. Additional corrections were therefore rejected to avoid unjustified signal modification. | 2e | No — exploratory diagnostics retained, but no new preprocessing transformation |
 | 2. Preprocessing — spindle preservation review | Retain P1 as the preferred preprocessing candidate; reconsider P2 denoising thresholds | P2 wavelet denoising under the current settings | P1 preserved all eight Raw spindle candidates at IoU ≥ 0.30, whereas P2 matched only five and retained 27.63% of sigma-band power on average. This provides a physiological reason to favor P1 beyond classification metrics alone. | 2f | Yes — P2 remains an investigated alternative, but its physiological preservation is now a documented concern requiring revision before further use |
 | 2. Preprocessing - P6 clock-based cropping | Retain P1 as the preferred configuration; document P6 as an alternative training-selection experiment | Fixed 20:30–11:00 training window versus full-night training | P6 slightly improved pooled balanced accuracy (0.6185→0.6251), but reduced pooled kappa (0.7516→0.7421) and outside-window Wake recall (98.67%→97.66%). The improvement was insufficient to replace P1. | 2h | No — P1 remains preferred; random Wake undersampling proposed but not tested |
 | 2. Preprocessing, large-cohort revision | P1 provisionally retained; P2 db4 not selected | P0 none; P1 band-pass; P2 wavelet | On 68 subjects, P1 achieved pooled κ 0.731 versus 0.728 for P0, whereas P2 decreased to 0.692. This revises the earlier positive interpretation of P2 on three subjects; coif3 remains to be evaluated. | 2i–2k | Yes — earlier P2 assessment revised after larger-cohort evidence |
+| 2. Preprocessing: integrated QC | P1 band-pass + P3/P5 flag-only QC | Automatic P3 exclusion; P5 correction or exclusion; no QC | Full-cohort QC identified 3,630 flagged epochs, but 94.1% were Wake and the association with classification errors depended strongly on sleep stage. Non-destructive QC preserves all data while retaining diagnostic metadata. | 2l–2m | Yes — supersedes the earlier P3 exclusion decision for the current integrated pipeline |
+| 2. Preprocessing — combined P1+P2 | Retain P1; reject the tested P1+P2 db4 combination | Sequential band-pass filtering followed by db4 wavelet denoising | On 68 subjects, combined preprocessing decreased pooled κ from 0.731 to 0.702 relative to P1 and reduced subject-wise κ for 53/68 subjects. P1 remained better for all five sleep-stage recalls. | 2n | Yes — combined preprocessing was tested and rejected after large-scale downstream evaluation |
 | 3. Feature extraction |  |  |  |  |  |
 | 4. Feature selection | *e.g.* `select="none"` | ANOVA `SelectKBest`, tree importances | 14 features vs. ~1 800 epochs — pruning risked more than it saved | 1 | *e.g.* **yes, iter 4** — `select_k=20` was a no-op (harness said so); switched to `k=6` |
 | 5. Classification, incl. `imbalance` | *e.g.* `imbalance="balanced"` | `"none"`, `"resample"`, `"threshold"` | *(if you kept the default, say you looked and why — a silent default earns nothing)* |  |  |
@@ -1151,8 +1354,8 @@ diagnose from.
 | 1 | *e.g.* worst-subject κ 0.14 vs. mean 0.61 | stage 2 — no per-recording normalisation | z-scored band powers within each recording | mean κ 0.61 → 0.59, **worst subject 0.14 → 0.38** — kept |
 | 2 | P2 db4 attenuated selected spindle candidates and matched only 5/8 raw candidates, prompting a review of its preprocessing settings | Stage 2 — choice of mother wavelet for P2 | Revisited the db4 choice by testing sym4, coif1 and coif3 under identical LOSO conditions | coif3 increased pooled kappa from 0.743 to 0.745 but reduced macro-F1 from 0.648 to 0.647; db4 was retained as the P2 reference, and P1 remained preferred |
 | 3 | Large-cohort P2 wavelet performance decreased to pooled κ 0.692, compared with 0.728 for P0 | Earlier three-subject assessment that P2 denoising was beneficial relative to P0 | Reassessed the same preprocessing approaches on 68 development subjects using five fixed subject-wise folds; retained P1 provisionally and planned coif3 reassessment | P2 pooled κ 0.743 on the earlier three-subject course-environment experiment versus 0.692 on 68 subjects; these are different cohorts, not a paired performance change |
-
-
+| 4 | Full-cohort QC identified 748 P3 near-flat epochs and 2,882 P5 suspected-clipping epochs; stage-specific error analysis showed mixed associations and strong Wake dominance among flagged epochs | Earlier P3 strategy automatically excluded near-flat epochs | Revised the integrated P3 behavior from exclusion to flag-only QC, while preserving P5 as flag-only | No new classifier score was generated for the integrated configuration; the existing P1 predictions remain unchanged because QC flags are not used for feature extraction or classification |
+| 5 | Combined P1+P2 reduced pooled κ from 0.731 to 0.702 relative to P1, with 53/68 subjects showing lower κ | Earlier hypothesis that band-pass filtering before wavelet denoising might improve the current feature representation | Implemented and evaluated sequential P1+P2 db4 preprocessing, then rejected it for the selected pipeline | Mean subject κ decreased from 0.728 to 0.696; mean paired Δκ = −0.0321 (SD 0.0553) |
 
 ## Who did what
 
@@ -1172,8 +1375,8 @@ between iterations. Record what actually happened.
 | 2g | Lili | Designed and executed the four-mother-wavelet comparison; verified exact db4 baseline reproduction and feature/label alignment; performed three-fold LOSO Random Forest evaluation; analysed pooled and stage-specific confusion matrices, subject-level classification errors and ground-truth sleep-stage distributions; documented conclusions and follow-up investigations. | |
 | 2h | Lili | Implemented and validated EDF-based epoch timestamp alignment and fixed clock-based cropping; performed subject-wise LOSO P1/P6 comparisons with identical held-out test sets; analysed nighttime and outside-window performance, subject-level results and confusion matrices; documented limitations and proposed random Wake undersampling as future work. | |
 | 2i–2k | Lili | Executed and analysed large-scale P0/P1/P2 preprocessing comparisons on 68 development subjects; used reproducible five-fold subject-wise evaluation, saved fold checkpoints and provenance, compared pooled and subject-wise metrics, and revisited the earlier P2 decision | |
-
-
+| 2l–2m | Lili | Integrated P3/P5 quality-control flags with P1 in the SleepEDFTrack pipeline; verified signal, label and feature preservation; performed full-cohort QC on 68 subjects and 133 recordings; aligned QC flags with P1 out-of-fold predictions; analysed overall and sleep-stage-specific classification errors; documented the decision to retain non-destructive QC | |
+| 2n | Lili | Implemented and validated combined P1 band-pass and P2 db4 wavelet preprocessing; executed five-fold subject-wise evaluation on 68 development subjects; verified exact out-of-fold prediction alignment; analysed pooled metrics, stage-specific recall and paired subject-level Cohen's kappa differences; documented the negative result and revised the preprocessing decision | |
 
 ## Final numbers (fill in once, at the end)
 

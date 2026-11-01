@@ -1,8 +1,13 @@
 """Preprocessing experiments P0–P5; only P0 is implemented."""
 from .base import NoPreprocessing, Preprocessor
 from .experiments import (
-    BrokenSegmentHandling, EEGBandpass, SubjectRecordingNormalisation,
-    TargetedDenoising, WaveletDenoising,ClockBasedCropping,
+    BrokenSegmentHandling,
+    EEGBandpass,
+    SubjectRecordingNormalisation,
+    TargetedDenoising,
+    WaveletDenoising,
+    ClockBasedCropping,
+    BandpassWavelet,
 )
 
 
@@ -28,6 +33,7 @@ def make_preprocessor(name="none") -> Preprocessor:
         "denoise_clipping": TargetedDenoising,
         "p5": TargetedDenoising,
         "p6": ClockBasedCropping,
+        "bandpass_wavelet": BandpassWavelet,
     }
 
     if key not in choices:
