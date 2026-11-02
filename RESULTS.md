@@ -49,6 +49,9 @@ spread is half a result.
 | 2l (integrated preprocessing QC) | 2026-10-31 | Integrated P3 near-flat and P5 suspected-clipping flags with P1 band-pass in the SleepEDFTrack pipeline; verified that QC metadata is preserved without changing signals, labels, epochs or extracted features | N/A — integration validation, no new classifier evaluation; P1 reference: mean subject κ 0.728 (SD 0.120, range 0.217–0.906 across 68 subjects) | No classification change expected: QC flags are metadata only | Retained to provide reproducible signal-quality monitoring without excluding potentially valid epochs | `66aa8ae` |
 | 2m (68-subject QC and error analysis) | 2026-11-01 | Applied P3/P5 flag-only QC to 133 recordings and aligned flagged epochs with P1 out-of-fold predictions across 68 development subjects | P1 reference: mean subject κ 0.728 (SD 0.120, range 0.217–0.906); 3,630/360,621 epochs flagged (1.007%); flagged error 3.609% vs unflagged 12.719% | No new classifier evaluation; 94.1% of flagged epochs were Wake, explaining much of the aggregate difference | Retained QC as diagnostic metadata; stage-specific analysis showed higher error among flagged N2/REM epochs, but flagged counts were small | `66aa8ae` |
 | 2n (combined P1+P2, 68 subjects) | 2026-11-01 | Evaluated sequential EEG 0.5–40 Hz band-pass filtering followed by db4 wavelet denoising on the same 68 development subjects and fixed five-fold subject-wise GroupKFold splits | mean subject κ 0.696 (SD 0.137, range 0.169–0.914 across 68 subjects) | No — pooled κ decreased from 0.731 (P1) to 0.702 (P1+P2); 53/68 subjects deteriorated | Retained as a documented negative experiment; the combined preprocessing is not selected for the current 11-feature Random Forest pipeline | `66aa8ae` |
+
+| 2o (P1b, cutoff sensitivity) | 2026-11-02 | Reduced the EEG Butterworth upper cutoff from 40 to 35 Hz while keeping order 4 and zero-phase epoch-wise filtering; evaluated on the same 68 development subjects and five GroupKFold splits | mean subject κ 0.727 (SD 0.121 across 68 subjects); pooled κ 0.730; macro-F1 0.654 | No clear improvement vs P1 (pooled κ 0.731) | Retained as a controlled sensitivity experiment; P1 remains the preferred configuration | Pending |
+| 2p (P1c, filter-order sensitivity) | 2026-11-02 | Increased the EEG Butterworth order from 4 to 5 at 0.5–35 Hz, keeping all other pipeline settings unchanged | mean subject κ 0.727 (SD 0.121, range 0.223–0.911 across 68 subjects); pooled κ 0.730; macro-F1 0.654 | No measurable improvement vs P1b at three-decimal precision | Retained as a documented neutral experiment; P1 remains preferred | Pending |
 | 4 |  |  |  | yes / no |  |  |
 | 4 |  |  |  | yes / no |  |  |
 | 4 |  |  |  | yes / no |  |  |
@@ -59,6 +62,84 @@ spread is half a result.
 *"Better" means better under the same honest harness — same split unit, same evaluation mode, same seed. A change that lowers the metric can still be the right call (simpler, faster, more robust across subjects, removes a leak). Say so in the column instead of quietly reverting it: "kept — κ fell 0.02 but the worst-subject κ rose from 0.18 to 0.31" is a stronger result than a silent higher mean.*
 
 ## Detailed log
+
+### EEG Butterworth cutoff and filter-order sensitivity: P1b and P1c, Lili, 2026-11-02
+
+**Motivation.**
+
+Following the large-scale P0/P1/P2 comparison, P1 (0.5–40 Hz, fourth-order zero-phase Butterworth filtering) remained the preferred preprocessing configuration. Two controlled experiments investigated whether reducing the upper cutoff frequency or increasing the filter order could improve downstream sleep-stage classification.
+
+**Experimental protocol.**
+
+The experiments used the same 68 development subjects, 133 PSG/hypnogram recordings, 360,621 labelled 30-second epochs and five subject-wise GroupKFold splits as the previous large-scale evaluations. The final holdout subjects remained excluded.
+
+Four configurations were compared:
+
+- P0: no preprocessing.
+- P1: EEG Butterworth band-pass, 0.5–40 Hz, order 4.
+- P1b: EEG Butterworth band-pass, 0.5–35 Hz, order 4.
+- P1c: EEG Butterworth band-pass, 0.5–35 Hz, order 5.
+
+Filtering was zero-phase and applied independently to 30-second EEG epochs. EOG and EMG remained unchanged. All experiments used the same 11 baseline features, Welch spectral estimation, Random Forest classifier (200 trees, balanced class weights, seed 0), and subject-wise evaluation protocol.
+
+P1 versus P1b isolates the effect of the upper cutoff frequency. P1b versus P1c isolates the effect of the filter order.
+
+**Classification results.**
+
+| Metric | P0 | P1 | P1b | P1c |
+|---|---:|---:|---:|---:|
+| Mean subject-wise Cohen's κ | 0.726 | 0.728 | 0.727 | 0.727 |
+| SD of subject-wise κ | 0.118 | 0.120 | 0.121 | 0.121 |
+| Pooled accuracy | 0.873 | 0.874 | 0.873 | 0.873 |
+| Pooled Cohen's κ | 0.728 | 0.731 | 0.730 | 0.730 |
+| Pooled macro-F1 | 0.651 | 0.655 | 0.654 | 0.654 |
+| Pooled balanced accuracy | 0.628 | 0.634 | 0.633 | 0.633 |
+
+All metrics are rounded to three decimal places.
+
+**Sleep-stage recall.**
+
+| Stage | P0 | P1 | P1b | P1c |
+|---|---:|---:|---:|---:|
+| Wake | 97.97% | 97.83% | 97.80% | 97.80% |
+| N1 | 13.08% | 13.78% | 13.40% | 13.52% |
+| N2 | 80.93% | 81.24% | 81.12% | 80.91% |
+| N3 | 66.67% | 66.75% | 66.86% | 66.93% |
+| REM | 55.35% | 57.25% | 57.24% | 57.26% |
+
+**Interpretation.**
+
+Reducing the upper cutoff frequency from 40 to 35 Hz did not improve the overall classification metrics. Increasing the Butterworth filter order from four to five also produced no measurable improvement in the rounded pooled metrics.
+
+Small changes were observed in stage-specific recall, but these changes were mixed and did not establish a consistent advantage for either alternative.
+
+The results do not demonstrate that the 35–40 Hz frequency range is physiologically irrelevant or that fourth- and fifth-order filters produce identical signals. They indicate only that the tested changes did not yield a meaningful classification improvement under the current feature representation and classifier.
+
+N1 recall remained particularly low across all configurations. Subject-wise performance also showed substantial variability (SD approximately 0.12), much larger than the differences between the reported mean scores.
+
+**Decision.**
+
+Retain P1 (0.5–40 Hz, order 4) as the provisional preprocessing reference. Document P1b and P1c as controlled sensitivity experiments without demonstrated classification benefit.
+
+**Limitations and next steps.**
+
+- Reported metrics are rounded; exact differences require the saved `report.json` files.
+- Paired subject-level differences and confidence intervals have not yet been calculated.
+- The same development folds have been used for multiple preprocessing comparisons, creating potential model-selection bias.
+- The conclusions apply to the current 11-feature Random Forest pipeline.
+- Next evaluate P1d: continuous EEG filtering before 30-second segmentation, using P1 filter parameters to isolate epoch-boundary effects.
+- Keep the final holdout untouched until pipeline selection is complete.
+
+**Reproducibility.**
+
+Runner: `scripts/internal/run_baseline_large.py`
+
+- P0: `results/real__P0_20261029T140444314080Z/`
+- P1: `results/real__P1_20261029T161038916244Z/`
+- P1b: insert exact saved results directory.
+- P1c: `results/real__P1c_20261102T124921338377Z/`
+
+Commit: pending.
 
 ### Combined P1 + P2 preprocessing: large-scale evaluation and paired subject analysis, Lili, 2026-11-01
 
@@ -1334,6 +1415,8 @@ add rows as the pipeline grows, and note the alternative you rejected.
 | 2. Preprocessing, large-cohort revision | P1 provisionally retained; P2 db4 not selected | P0 none; P1 band-pass; P2 wavelet | On 68 subjects, P1 achieved pooled κ 0.731 versus 0.728 for P0, whereas P2 decreased to 0.692. This revises the earlier positive interpretation of P2 on three subjects; coif3 remains to be evaluated. | 2i–2k | Yes — earlier P2 assessment revised after larger-cohort evidence |
 | 2. Preprocessing: integrated QC | P1 band-pass + P3/P5 flag-only QC | Automatic P3 exclusion; P5 correction or exclusion; no QC | Full-cohort QC identified 3,630 flagged epochs, but 94.1% were Wake and the association with classification errors depended strongly on sleep stage. Non-destructive QC preserves all data while retaining diagnostic metadata. | 2l–2m | Yes — supersedes the earlier P3 exclusion decision for the current integrated pipeline |
 | 2. Preprocessing — combined P1+P2 | Retain P1; reject the tested P1+P2 db4 combination | Sequential band-pass filtering followed by db4 wavelet denoising | On 68 subjects, combined preprocessing decreased pooled κ from 0.731 to 0.702 relative to P1 and reduced subject-wise κ for 53/68 subjects. P1 remained better for all five sleep-stage recalls. | 2n | Yes — combined preprocessing was tested and rejected after large-scale downstream evaluation |
+| 2. Preprocessing, Butterworth cutoff and order | Retain P1 (0.5–40 Hz, order 4) | P1b: 0.5–35 Hz order 4; P1c: 0.5–35 Hz order 5 | Both alternatives achieved pooled κ 0.730 and macro-F1 0.654, compared with 0.731 and 0.655 for P1. No meaningful improvement was demonstrated. | 2o–2p | No, P1 retained; continuous filtering to be tested in P1d |
+
 | 3. Feature extraction |  |  |  |  |  |
 | 4. Feature selection | *e.g.* `select="none"` | ANOVA `SelectKBest`, tree importances | 14 features vs. ~1 800 epochs — pruning risked more than it saved | 1 | *e.g.* **yes, iter 4** — `select_k=20` was a no-op (harness said so); switched to `k=6` |
 | 5. Classification, incl. `imbalance` | *e.g.* `imbalance="balanced"` | `"none"`, `"resample"`, `"threshold"` | *(if you kept the default, say you looked and why — a silent default earns nothing)* |  |  |
@@ -1377,6 +1460,8 @@ between iterations. Record what actually happened.
 | 2i–2k | Lili | Executed and analysed large-scale P0/P1/P2 preprocessing comparisons on 68 development subjects; used reproducible five-fold subject-wise evaluation, saved fold checkpoints and provenance, compared pooled and subject-wise metrics, and revisited the earlier P2 decision | |
 | 2l–2m | Lili | Integrated P3/P5 quality-control flags with P1 in the SleepEDFTrack pipeline; verified signal, label and feature preservation; performed full-cohort QC on 68 subjects and 133 recordings; aligned QC flags with P1 out-of-fold predictions; analysed overall and sleep-stage-specific classification errors; documented the decision to retain non-destructive QC | |
 | 2n | Lili | Implemented and validated combined P1 band-pass and P2 db4 wavelet preprocessing; executed five-fold subject-wise evaluation on 68 development subjects; verified exact out-of-fold prediction alignment; analysed pooled metrics, stage-specific recall and paired subject-level Cohen's kappa differences; documented the negative result and revised the preprocessing decision | |
+| 2o–2p | Lili | Implemented and evaluated EEG Butterworth cutoff-frequency and filter-order sensitivity experiments (P1b and P1c) on 68 development subjects; compared pooled metrics, subject-wise variability and sleep-stage recall against P0 and P1; documented the decision to retain P1 | |
+
 
 ## Final numbers (fill in once, at the end)
 
