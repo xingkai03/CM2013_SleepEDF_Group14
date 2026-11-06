@@ -27,7 +27,13 @@ class SleepEDFTrack(ReferenceSleepEDFTrack):
                 noise_type="clipping",
                 min_plateau_samples=3,
             ).transform(rec)
+        if cfg["preprocess"] == "p1d":
+            if not rec.meta.get("continuous_eeg_bandpass", False):
+                raise ValueError(
+                    "P1d requires continuous EEG filtering during loading."
+                )
 
+            return rec
         preprocessor = make_preprocessor(cfg["preprocess"])
 
         if cfg["preprocess"] in ("wavelet", "bandpass_wavelet"):

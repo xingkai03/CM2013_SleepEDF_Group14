@@ -50,8 +50,14 @@ spread is half a result.
 | 2m (68-subject QC and error analysis) | 2026-11-01 | Applied P3/P5 flag-only QC to 133 recordings and aligned flagged epochs with P1 out-of-fold predictions across 68 development subjects | P1 reference: mean subject κ 0.728 (SD 0.120, range 0.217–0.906); 3,630/360,621 epochs flagged (1.007%); flagged error 3.609% vs unflagged 12.719% | No new classifier evaluation; 94.1% of flagged epochs were Wake, explaining much of the aggregate difference | Retained QC as diagnostic metadata; stage-specific analysis showed higher error among flagged N2/REM epochs, but flagged counts were small | `66aa8ae` |
 | 2n (combined P1+P2, 68 subjects) | 2026-11-01 | Evaluated sequential EEG 0.5–40 Hz band-pass filtering followed by db4 wavelet denoising on the same 68 development subjects and fixed five-fold subject-wise GroupKFold splits | mean subject κ 0.696 (SD 0.137, range 0.169–0.914 across 68 subjects) | No — pooled κ decreased from 0.731 (P1) to 0.702 (P1+P2); 53/68 subjects deteriorated | Retained as a documented negative experiment; the combined preprocessing is not selected for the current 11-feature Random Forest pipeline | `66aa8ae` |
 
-| 2o (P1b, cutoff sensitivity) | 2026-11-02 | Reduced the EEG Butterworth upper cutoff from 40 to 35 Hz while keeping order 4 and zero-phase epoch-wise filtering; evaluated on the same 68 development subjects and five GroupKFold splits | mean subject κ 0.727 (SD 0.121 across 68 subjects); pooled κ 0.730; macro-F1 0.654 | No clear improvement vs P1 (pooled κ 0.731) | Retained as a controlled sensitivity experiment; P1 remains the preferred configuration | Pending |
-| 2p (P1c, filter-order sensitivity) | 2026-11-02 | Increased the EEG Butterworth order from 4 to 5 at 0.5–35 Hz, keeping all other pipeline settings unchanged | mean subject κ 0.727 (SD 0.121, range 0.223–0.911 across 68 subjects); pooled κ 0.730; macro-F1 0.654 | No measurable improvement vs P1b at three-decimal precision | Retained as a documented neutral experiment; P1 remains preferred | Pending |
+| 2o (P1b, cutoff sensitivity) | 2026-11-02 | Reduced the EEG Butterworth upper cutoff from 40 to 35 Hz while keeping order 4 and zero-phase epoch-wise filtering; evaluated on the same 68 development subjects and five GroupKFold splits | mean subject κ 0.727 (SD 0.121 across 68 subjects); pooled κ 0.730; macro-F1 0.654 | No clear improvement vs P1 (pooled κ 0.731) | Retained as a controlled sensitivity experiment; P1 remains the preferred configuration | `bca3a38` |
+| 2p (P1c, filter-order sensitivity) | 2026-11-02 | Increased the EEG Butterworth order from 4 to 5 at 0.5–35 Hz, keeping all other pipeline settings unchanged | mean subject κ 0.727 (SD 0.121, range 0.223–0.911 across 68 subjects); pooled κ 0.730; macro-F1 0.654 | No measurable improvement vs P1b at three-decimal precision | Retained as a documented neutral experiment; P1 remains preferred | `bca3a38` |
+
+| 2q (P1d, continuous EEG filtering) | 2026-11-02 | Applied the P1 Butterworth 0.5–40 Hz order-4 filter to continuous EEG before epoch segmentation, rather than filtering each 30-second epoch independently; evaluated on the same 68 development subjects and five subject-wise folds | mean subject κ 0.728 (SD 0.121, range 0.223–0.909 across 68 subjects); pooled κ 0.731; macro-F1 0.655 | No meaningful improvement over P1 (pooled κ 0.731) | Retained as a controlled comparison of filter placement; P1 remains preferred | pending |
+| 2r (EEG clipping and EDF limits) | 2026-11-06 | Investigated repeated EEG extrema, validated clipping candidates against EDF physical limits, and quantified sustained boundary plateaus across 133 recordings | N/A — diagnostic QC; 1,227/360,621 epochs flagged (0.340%) using plateaus of at least 10 samples at recording extrema | No new classification evaluation | Retained as objective signal-quality documentation without signal reconstruction or epoch exclusion | pending |
+| 2s (EOG/EMG quality audit) | 2026-11-06 | Audited original EOG and EMG channels for EDF-boundary samples, examined sampling rates and inspected epochs with extreme signal variability | N/A — diagnostic QC; EOG: 1 EDF-boundary sample across 133 recordings; EMG: 0 | No new classification evaluation | No additional automatic correction justified; original EOG/EMG preserved | pending |
+| 2t (multichannel inspection) | 2026-11-06 | Visually compared aligned EEG, EOG and EMG signals in suspicious epochs from SC4372F0 to investigate possible shared disturbances | N/A — visual diagnostic only; no classifier evaluation | No new classification evaluation | Large-amplitude fluctuations were not sufficient to confirm acquisition artifacts; retain flag-only QC | pending |
+
 | 4 |  |  |  | yes / no |  |  |
 | 4 |  |  |  | yes / no |  |  |
 | 4 |  |  |  | yes / no |  |  |
@@ -62,6 +68,212 @@ spread is half a result.
 *"Better" means better under the same honest harness — same split unit, same evaluation mode, same seed. A change that lowers the metric can still be the right call (simpler, faster, more robust across subjects, removes a leak). Say so in the column instead of quietly reverting it: "kept — κ fell 0.02 but the worst-subject κ rose from 0.18 to 0.31" is a stronger result than a silent higher mean.*
 
 ## Detailed log
+
+
+### EEG clipping investigation and EDF-limit validation — Lili, 2026-11-06
+
+**Motivation.**
+
+Earlier P5 quality-control experiments identified repeated EEG extrema, but the original heuristic detector did not establish whether these values corresponded to EDF acquisition limits. A more specific investigation was conducted to distinguish sustained boundary plateaus from ordinary repeated quantised samples.
+
+**Dataset and methods.**
+
+The analysis covered 68 development subjects, 133 PSG recordings and 360,621 labelled 30-second epochs. The final holdout was excluded.
+
+For each EEG recording, the minimum and maximum amplitudes were determined. Consecutive exactly identical samples were grouped into plateaus. A stricter clipping candidate was defined as a plateau of at least 10 samples (100 ms at 100 Hz) whose amplitude equalled the recording minimum or maximum.
+
+EDF physical and digital limits were independently extracted from the original recording headers and compared with the detected plateaus.
+
+This stricter analysis is distinct from the earlier P5 heuristic using at least three repeated samples.
+
+**Results.**
+
+- 1,227 of 360,621 epochs were flagged (0.340%).
+- All 1,227 flagged epochs contained a qualifying plateau at an EDF physical boundary.
+- All 35,305 samples counted by the strict detector corresponded to EDF physical limits.
+- 92 of 133 recordings reached their EEG physical minimum.
+- 77 of 133 recordings reached their EEG physical maximum.
+- 76 recordings reached both limits.
+- None of the 40 recordings reaching neither limit contained a strict clipping flag.
+
+The 1,227 flagged epochs were distributed across sleep stages as follows:
+
+| Stage | Flagged epochs |
+|---|---:|
+| W | 1,195 |
+| N1 | 10 |
+| N2 | 9 |
+| N3 | 5 |
+| REM | 8 |
+| **Total** | **1,227** |
+
+**Clipping severity.**
+
+Severity was defined using the percentage of samples belonging to qualifying boundary plateaus within each 30-second epoch.
+
+| Severity | Clipped-sample percentage | Epochs |
+|---|---|---:|
+| None | 0% | 359,394 |
+| Low | >0–1% | 961 |
+| Moderate | >1–5% | 239 |
+| High | >5–10% | 15 |
+| Very high | >10% | 12 |
+
+The severity categories are exploratory engineering thresholds, not clinically validated artifact categories.
+
+**Interpretation and decision.**
+
+The agreement with EDF physical limits strongly supports interpreting the detected plateaus as boundary saturation or clipping candidates. However, the detector does not establish the underlying hardware mechanism or capture every possible acquisition artifact.
+
+The original signals, labels and epochs were preserved. No interpolation, reconstruction or automatic exclusion was introduced.
+
+This analysis refines the earlier P5 investigation: the previous 2,882 flagged epochs and the present 1,227 strict flags use different detection criteria and must not be treated as interchangeable.
+
+**Reproducibility.**
+
+Scripts:
+- `scripts/internal/quantify_eeg_clipping.py`
+- `scripts/internal/check_edf_limits.py`
+- `scripts/internal/build_eeg_quality_flags.py`
+- `scripts/internal/inspect_suspicious_signals.py`
+
+Outputs:
+- `results/eeg_clipping_68/clipping_epochs.csv`
+- `results/eeg_clipping_68/eeg_quality_flags.csv`
+- `results/multichannel_audit_68/signal_inspection/`
+
+Commit: pending.
+
+
+### EOG and EMG quality assessment — Lili, 2026-11-06
+
+**Motivation.**
+
+After identifying EEG boundary plateaus, the investigation was extended to EOG and EMG to assess whether similar acquisition-limit anomalies were present in other channels.
+
+**Methods.**
+
+The original EOG and EMG channels were inspected independently of the mixed-channel loader to preserve their native sampling rates.
+
+EDF physical limits were compared with observed sample extrema across all 133 development recordings. Epoch-wise standard deviations and representative extreme epochs were also examined.
+
+**Sampling-rate findings.**
+
+- EEG Fpz-Cz: 100 Hz.
+- EOG horizontal: 100 Hz.
+- EMG submental: 1 Hz in the inspected original EDF recordings.
+
+The mixed-channel MNE loader provides EMG samples at 100 Hz through resampling. This does not restore high-frequency EMG information absent from the original 1 Hz channel.
+
+**EDF-limit audit.**
+
+| Channel | Recordings reaching an EDF physical limit | Samples at EDF physical limits |
+|---|---:|---:|
+| EOG | 1/133 | 1 |
+| EMG | 0/133 | 0 |
+
+The only EOG boundary sample was observed in recording SC4771G0 at its lower physical limit. No sustained EOG or EMG boundary plateau was identified.
+
+**Visual variability analysis.**
+
+Representative epochs with low and high standard deviation were inspected for three recordings: SC4201E0, SC4372F0 and SC4592G0.
+
+Low-variability epochs were not necessarily flat or defective. High-variability EOG epochs displayed large slow oscillations, potentially compatible with physiological eye movements or other disturbances.
+
+The original 1 Hz EMG samples were compared with the resampled 100 Hz curves. The large EMG variations observed in selected epochs were already present in the original samples, although the interpolated waveform between samples should not be interpreted as newly measured high-frequency activity.
+
+**Decision.**
+
+No additional EOG/EMG correction or automatic epoch exclusion was justified by these observations. Standard deviation alone was not adopted as an artifact detector.
+
+**Reproducibility.**
+
+Scripts:
+- `scripts/internal/audit_eog_emg_limits.py`
+- `scripts/internal/inspect_eog_emg_extremes.py`
+
+Outputs:
+- `results/eeg_clipping_68/eog_emg_recording_audit.csv`
+- `results/multichannel_audit_68/eog_emg_inspection/`
+
+Commit: pending.
+
+
+### Final multichannel inspection and preprocessing decision, Lili, 2026-11-06
+
+**Objective.**
+
+To investigate whether large EOG and EMG variations coincided with changes in EEG, aligned 30-second epochs from recording SC4372F0 were inspected simultaneously.
+
+**Results.**
+
+| Epoch | Stage | EEG SD (µV) | EOG SD (µV) | EMG SD (µV) |
+|---|---|---:|---:|---:|
+| 35 | W | 42.587 | 268.638 | 2.374 |
+| 2599 | W | 75.872 | 231.445 | 3.664 |
+
+Epoch 35 showed large EOG fluctuations accompanied by EEG variations and a slower EMG change. Some disturbances occurred at similar times, but the observations did not establish a shared cause.
+
+Epoch 2599 showed substantial variability across all three channels. The EEG also displayed flattened extrema visually compatible with clipping. Confirmation of EDF-boundary clipping requires the numerical detector rather than visual inspection alone.
+
+The multichannel inspection did not establish whether the large-amplitude fluctuations were physiological, acquisition-related or a mixture of both.
+
+**Final preprocessing decision.**
+
+P1 (0.5–40 Hz, fourth-order, zero-phase Butterworth filtering applied epoch-wise) remains the preferred EEG preprocessing configuration for the current baseline pipeline.
+
+P1d did not demonstrate a meaningful classification improvement. EEG clipping is documented using strict EDF-boundary quality flags. EOG and EMG remain unchanged, and no additional automatic artifact correction or epoch exclusion is introduced.
+
+All conclusions are based on development recordings. The final holdout remains untouched.
+
+**Reproducibility.**
+
+Script:
+- `scripts/internal/inspect_final_multichannel.py`
+
+Outputs:
+- `results/multichannel_audit_68/final_inspection/SC4372F0_epoch_35.png`
+- `results/multichannel_audit_68/final_inspection/SC4372F0_epoch_2599.png`
+
+Commit: pending.
+
+
+### P1d, Continuous EEG filtering before epoch segmentation
+
+**Hypothesis:** Applying the Butterworth band-pass filter to the continuous EEG signal before segmentation may reduce epoch-boundary artifacts and improve sleep-stage classification compared with epoch-wise filtering.
+
+**Method:** Fourth-order Butterworth band-pass filter (0.5–40 Hz), applied using zero-phase `scipy.signal.filtfilt` to the continuous EEG recording before 30-second epoch extraction. EOG, EMG, labels, features, classifier, and subject-wise cross-validation protocol were unchanged.
+
+**Dataset:** 68 development subjects, 133 PSG/Hypnogram pairs, 360,621 epochs. The final holdout was not used.
+
+**Results:**
+- Accuracy: 0.873
+- Cohen's κ: 0.731
+- Macro-F1: 0.655
+- Balanced accuracy: 0.633
+- Mean subject κ: 0.728 (SD 0.121; range 0.223–0.909)
+
+**Comparison with P1:** Performance was nearly identical to epoch-wise filtering. No meaningful improvement was observed at the reported precision.
+
+**Decision:** Retain P1 as the provisional reference preprocessing method. P1d is documented as a controlled comparison of filter placement, with no demonstrated classification benefit.
+
+**Limitations:** No paired statistical comparison or direct quantification of boundary artifacts has yet been performed. The results do not establish that continuous filtering has no effect on the underlying EEG signal.
+
+
+**Reproducibility.**
+
+Runner: `scripts/internal/run_baseline_large.py`
+
+Command:
+```powershell
+uv run --locked python -B scripts/internal/run_baseline_large.py --preprocess p1d --cache-dir "G:\My Drive\CM2013\data_cache\sleep_edf\physionet-sleep-data"
+```
+
+Saved results:
+- `results/real__P1d_20261102T163844876492Z/`
+
+Commit: pending.
+
 
 ### EEG Butterworth cutoff and filter-order sensitivity: P1b and P1c, Lili, 2026-11-02
 
@@ -139,7 +351,7 @@ Runner: `scripts/internal/run_baseline_large.py`
 - P1b: insert exact saved results directory.
 - P1c: `results/real__P1c_20261102T124921338377Z/`
 
-Commit: pending.
+Commit: `bca3a38`.
 
 ### Combined P1 + P2 preprocessing: large-scale evaluation and paired subject analysis, Lili, 2026-11-01
 
@@ -1417,6 +1629,11 @@ add rows as the pipeline grows, and note the alternative you rejected.
 | 2. Preprocessing — combined P1+P2 | Retain P1; reject the tested P1+P2 db4 combination | Sequential band-pass filtering followed by db4 wavelet denoising | On 68 subjects, combined preprocessing decreased pooled κ from 0.731 to 0.702 relative to P1 and reduced subject-wise κ for 53/68 subjects. P1 remained better for all five sleep-stage recalls. | 2n | Yes — combined preprocessing was tested and rejected after large-scale downstream evaluation |
 | 2. Preprocessing, Butterworth cutoff and order | Retain P1 (0.5–40 Hz, order 4) | P1b: 0.5–35 Hz order 4; P1c: 0.5–35 Hz order 5 | Both alternatives achieved pooled κ 0.730 and macro-F1 0.654, compared with 0.731 and 0.655 for P1. No meaningful improvement was demonstrated. | 2o–2p | No, P1 retained; continuous filtering to be tested in P1d |
 
+| 2. Preprocessing — continuous versus epoch-wise filtering | Retain P1 epoch-wise EEG filtering | P1d continuous EEG filtering before segmentation | P1d achieved pooled κ 0.731 and mean subject κ 0.728 (SD 0.121), without meaningful improvement over P1; the existing epoch-wise method remains preferred. | 2q | No — P1 retained |
+| 2. Signal quality — strict EEG clipping | Preserve all epochs and export EDF-boundary quality flags | Exclude clipped epochs; interpolate plateaus; rely only on the earlier P5 heuristic | A stricter detector identified 1,227 epochs containing sustained plateaus at EDF physical limits; signal reconstruction was not justified. | 2r | Yes — refined the interpretation of the earlier P5 flags |
+| 2. Signal quality — EOG and EMG | Preserve original signals; no additional correction | Automatic exclusion based on extreme standard deviation; EOG/EMG denoising | EDF-limit audit found one EOG boundary sample and no EMG boundary samples across 133 recordings; visual variability alone did not establish artifacts. | 2s–2t | No — preprocessing investigation closed |
+
+
 | 3. Feature extraction |  |  |  |  |  |
 | 4. Feature selection | *e.g.* `select="none"` | ANOVA `SelectKBest`, tree importances | 14 features vs. ~1 800 epochs — pruning risked more than it saved | 1 | *e.g.* **yes, iter 4** — `select_k=20` was a no-op (harness said so); switched to `k=6` |
 | 5. Classification, incl. `imbalance` | *e.g.* `imbalance="balanced"` | `"none"`, `"resample"`, `"threshold"` | *(if you kept the default, say you looked and why — a silent default earns nothing)* |  |  |
@@ -1439,6 +1656,8 @@ diagnose from.
 | 3 | Large-cohort P2 wavelet performance decreased to pooled κ 0.692, compared with 0.728 for P0 | Earlier three-subject assessment that P2 denoising was beneficial relative to P0 | Reassessed the same preprocessing approaches on 68 development subjects using five fixed subject-wise folds; retained P1 provisionally and planned coif3 reassessment | P2 pooled κ 0.743 on the earlier three-subject course-environment experiment versus 0.692 on 68 subjects; these are different cohorts, not a paired performance change |
 | 4 | Full-cohort QC identified 748 P3 near-flat epochs and 2,882 P5 suspected-clipping epochs; stage-specific error analysis showed mixed associations and strong Wake dominance among flagged epochs | Earlier P3 strategy automatically excluded near-flat epochs | Revised the integrated P3 behavior from exclusion to flag-only QC, while preserving P5 as flag-only | No new classifier score was generated for the integrated configuration; the existing P1 predictions remain unchanged because QC flags are not used for feature extraction or classification |
 | 5 | Combined P1+P2 reduced pooled κ from 0.731 to 0.702 relative to P1, with 53/68 subjects showing lower κ | Earlier hypothesis that band-pass filtering before wavelet denoising might improve the current feature representation | Implemented and evaluated sequential P1+P2 db4 preprocessing, then rejected it for the selected pipeline | Mean subject κ decreased from 0.728 to 0.696; mean paired Δκ = −0.0321 (SD 0.0553) |
+| 6 | The earlier P5 heuristic flagged 2,882 epochs on the 68-subject cohort, but repeated recording extrema alone did not establish correspondence with EDF acquisition limits | Stage 2 — interpretation and specificity of the P5 suspected-clipping detector | Revisited the detection criterion using plateaus of at least 10 samples and independently verified EDF physical limits; produced 1,227 strict flags, all associated with EDF boundaries | No new classifier evaluation; this was a refinement of signal-quality evidence, not a performance improvement |
+
 
 ## Who did what
 
@@ -1461,6 +1680,11 @@ between iterations. Record what actually happened.
 | 2l–2m | Lili | Integrated P3/P5 quality-control flags with P1 in the SleepEDFTrack pipeline; verified signal, label and feature preservation; performed full-cohort QC on 68 subjects and 133 recordings; aligned QC flags with P1 out-of-fold predictions; analysed overall and sleep-stage-specific classification errors; documented the decision to retain non-destructive QC | |
 | 2n | Lili | Implemented and validated combined P1 band-pass and P2 db4 wavelet preprocessing; executed five-fold subject-wise evaluation on 68 development subjects; verified exact out-of-fold prediction alignment; analysed pooled metrics, stage-specific recall and paired subject-level Cohen's kappa differences; documented the negative result and revised the preprocessing decision | |
 | 2o–2p | Lili | Implemented and evaluated EEG Butterworth cutoff-frequency and filter-order sensitivity experiments (P1b and P1c) on 68 development subjects; compared pooled metrics, subject-wise variability and sleep-stage recall against P0 and P1; documented the decision to retain P1 | |
+| 2q | Lili | Implemented and evaluated continuous EEG filtering before epoch segmentation; verified preservation of EOG, EMG and labels; compared P1d against P1 using five-fold subject-wise evaluation on 68 development subjects | |
+| 2r | Lili | Investigated EEG plateaus and clipping across 133 recordings; inspected EDF physical/digital limits; validated strict clipping candidates; quantified stage distribution and severity; generated epoch-level quality flags without modifying signals | |
+| 2s | Lili | Audited original EOG and EMG channels across 133 recordings; examined native sampling rates, EDF boundaries and epoch variability; compared original 1 Hz EMG samples with resampled signals | |
+| 2t | Lili | Performed final aligned EEG/EOG/EMG visual inspection; documented ambiguous multichannel variations and justified the decision not to introduce further automatic preprocessing | |
+
 
 
 ## Final numbers (fill in once, at the end)

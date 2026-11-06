@@ -100,6 +100,7 @@ def build_parser():
             "bandpass_wavelet",
             "p1b",
             "p1c",
+            "p1d",
             "broken_segments",
             "denoise_clipping",
         ],
@@ -314,6 +315,7 @@ def run(args, parser, *, clf=None, classifier_info=None, seed=0,
         "bandpass": "P1",
         "p1b": "P1b",
         "p1c": "P1c",
+        "p1d": "P1d",
         "wavelet": "P2",
         "bandpass_wavelet": "P1_P2",
         "broken_segments": "P3",
@@ -381,7 +383,11 @@ def run(args, parser, *, clf=None, classifier_info=None, seed=0,
         )
 
         # Load only the current PSG/Hypnogram pair
-        recs = track.load(str(cache), psg_paths=[psg])
+        recs = track.load(
+            str(cache),
+            psg_paths=[psg],
+            continuous_eeg_bandpass=(args.preprocess == "p1d"),
+        )
 
         # Verify that the expected recording was loaded
         expected_record = psg.name.removesuffix("-PSG.edf")

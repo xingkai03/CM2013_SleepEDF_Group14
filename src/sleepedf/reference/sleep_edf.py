@@ -252,7 +252,7 @@ class SleepEDFTrack(TrackAdapter):
             on_missing="warn", verbose="ERROR")
         return cache_dir
 
-    def load(self, cache_dir, fs_target=100.0, epoch_s=30.0, *, psg_paths=None):
+    def load(self,cache_dir, fs_target=100.0,epoch_s=30.0,*,psg_paths=None,continuous_eeg_bandpass=False,):
         """Read Sleep-EDF PSG + Hypnogram pairs into Recordings.
         Groups by SUBJECT (filename 'SC4ss*'-> subject 'SC4ss'), maps R&K->AASM,
         merges S3+S4->N3, drops MOVEMENT/UNKNOWN epochs.
@@ -287,6 +287,20 @@ class SleepEDFTrack(TrackAdapter):
                 print(f"[sleep_edf] {os.path.basename(psg)}: missing {missing}; skipping record.")
                 continue
             data = {k: raw.get_data(picks=v)[0] for k, v in ch.items()}
+            if continuous_eeg_bandpass:
+                from scipy.signal import butter, filtfilt
+                nyq = fs / 2.0
+                wn = [
+                    max(0.5 / nyq, 1e-6),
+                    min(40.0 / nyq, 0.999),
+                ]
+                b, a = butter(4, wn, "band")
+                data["eeg"] = filtfilt(
+                    b,
+                    a,
+                    data["eeg"],
+                    axis=-1,
+                )
             events, ev_id = mne.events_from_annotations(
                 raw, event_id={k: i for i, k in enumerate(RK_TO_AASM)},
                 chunk_duration=epoch_s, verbose="ERROR")
@@ -318,7 +332,10 @@ class SleepEDFTrack(TrackAdapter):
             recs.append(Recording(group=subj, fs=fs,
                                   epochs={k: np.array(v) for k, v in ep.items()},
                                   labels=np.array(labels),
-                                  meta={"record": night_id}))
+                                  meta={
+                                    "record": night_id,
+                                    "continuous_eeg_bandpass": continuous_eeg_bandpass,
+                                }))
         return recs
 
 
