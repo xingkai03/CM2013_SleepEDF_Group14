@@ -11,3 +11,14 @@ __pycache__/
 build/
 dist/
 src/.DS_Store
+
+# Local editor settings
+.vscode/
+
+# Generated experiment outputs
+results/*.csv
+results/*.json
+results/*.txt
+
+# Local Sleep-EDF data
+data_cache/
