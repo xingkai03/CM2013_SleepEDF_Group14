@@ -25,7 +25,7 @@ class SleepEDFTrack(ReferenceSleepEDFTrack):
             rec = BrokenSegmentHandling(action="flag").transform(rec)
             rec = TargetedDenoising(
                 noise_type="clipping",
-                min_plateau_samples=3,
+                min_plateau_samples=10,
             ).transform(rec)
         if cfg["preprocess"] == "p1d":
             if not rec.meta.get("continuous_eeg_bandpass", False):
