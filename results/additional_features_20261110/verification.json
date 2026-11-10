@@ -1,0 +1,10 @@
+{
+  "command": "MPLCONFIGDIR=results/python_patch_comparison_20261008/runtime-cache/matplotlib .venv/bin/python -B -m unittest discover -s tests -v",
+  "tests_run": 62,
+  "additional_feature_tests": 12,
+  "failures": 0,
+  "errors": 0,
+  "result": "PASS",
+  "baseline_archive": "results/real__P1_20261008T115727461008Z/report.json",
+  "baseline_predictions_match_archive": true
+}

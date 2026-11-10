@@ -1,0 +1,186 @@
+test_all_seven_are_finite_aligned_and_do_not_modify_input (feature_checks.AdditionalFeatureTests.test_all_seven_are_finite_aligned_and_do_not_modify_input) ... ok
+test_emg_median_detects_a_known_tone_in_volts (feature_checks.AdditionalFeatureTests.test_emg_median_detects_a_known_tone_in_volts) ... FAIL
+test_empty_batch_keeps_feature_width (feature_checks.AdditionalFeatureTests.test_empty_batch_keeps_feature_width) ... ERROR
+test_flat_signals_have_zero_features_instead_of_spurious_frequencies (feature_checks.AdditionalFeatureTests.test_flat_signals_have_zero_features_instead_of_spurious_frequencies) ... 
+  test_flat_signals_have_zero_features_instead_of_spurious_frequencies (feature_checks.AdditionalFeatureTests.test_flat_signals_have_zero_features_instead_of_spurious_frequencies) (name='eeg_sef_95') ... FAIL
+  test_flat_signals_have_zero_features_instead_of_spurious_frequencies (feature_checks.AdditionalFeatureTests.test_flat_signals_have_zero_features_instead_of_spurious_frequencies) (name='emg_median_freq') ... FAIL
+test_known_band_power_ratios_and_spectral_edge (feature_checks.AdditionalFeatureTests.test_known_band_power_ratios_and_spectral_edge) ... FAIL
+test_low_rate_or_known_envelope_skips_emg_spectrum (feature_checks.AdditionalFeatureTests.test_low_rate_or_known_envelope_skips_emg_spectrum) ... ok
+test_non_finite_samples_fail_clearly (feature_checks.AdditionalFeatureTests.test_non_finite_samples_fail_clearly) ... FAIL
+test_relative_features_do_not_depend_on_volts_or_microvolts (feature_checks.AdditionalFeatureTests.test_relative_features_do_not_depend_on_volts_or_microvolts) ... 
+  test_relative_features_do_not_depend_on_volts_or_microvolts (feature_checks.AdditionalFeatureTests.test_relative_features_do_not_depend_on_volts_or_microvolts) (name='eeg_rel_delta') ... FAIL
+  test_relative_features_do_not_depend_on_volts_or_microvolts (feature_checks.AdditionalFeatureTests.test_relative_features_do_not_depend_on_volts_or_microvolts) (name='eeg_rel_sigma') ... FAIL
+  test_relative_features_do_not_depend_on_volts_or_microvolts (feature_checks.AdditionalFeatureTests.test_relative_features_do_not_depend_on_volts_or_microvolts) (name='eeg_sef_95') ... FAIL
+  test_relative_features_do_not_depend_on_volts_or_microvolts (feature_checks.AdditionalFeatureTests.test_relative_features_do_not_depend_on_volts_or_microvolts) (name='eeg_dwt_d2_energy') ... FAIL
+test_waveform_length_scales_with_amplitude (feature_checks.AdditionalFeatureTests.test_waveform_length_scales_with_amplitude) ... ok
+test_wavelet_detail_energy_distinguishes_low_and_high_tones (feature_checks.AdditionalFeatureTests.test_wavelet_detail_energy_distinguishes_low_and_high_tones) ... ok
+test_zero_crossings_ignore_runs_of_exact_zeros (feature_checks.AdditionalFeatureTests.test_zero_crossings_ignore_runs_of_exact_zeros) ... FAIL
+
+======================================================================
+ERROR: test_empty_batch_keeps_feature_width (feature_checks.AdditionalFeatureTests.test_empty_batch_keeps_feature_width)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/tests/test_additional_features.py", line 103, in test_empty_batch_keeps_feature_width
+    feats = self.extractor.extract(recording(np.empty((0, 3000))))
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/tests/test_features2.py", line 93, in extract
+    f_b, p_b = freqs[band], psd[:, band]
+                            ~~~^^^^^^^^^
+IndexError: too many indices for array: array is 2-dimensional, but 3 were indexed
+
+======================================================================
+FAIL: test_emg_median_detects_a_known_tone_in_volts (feature_checks.AdditionalFeatureTests.test_emg_median_detects_a_known_tone_in_volts)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/tests/test_additional_features.py", line 50, in test_emg_median_detects_a_known_tone_in_volts
+    self.assertEqual(feats["emg_median_freq"][0], 20.0)
+AssertionError: np.float64(10.0) != 20.0
+
+======================================================================
+FAIL: test_flat_signals_have_zero_features_instead_of_spurious_frequencies (feature_checks.AdditionalFeatureTests.test_flat_signals_have_zero_features_instead_of_spurious_frequencies) (name='eeg_sef_95')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/tests/test_additional_features.py", line 56, in test_flat_signals_have_zero_features_instead_of_spurious_frequencies
+    np.testing.assert_array_equal(values, [0.0])
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/.venv/lib/python3.11/site-packages/numpy/_utils/__init__.py", line 86, in wrapper
+    return fun(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/.venv/lib/python3.11/site-packages/numpy/testing/_private/utils.py", line 1057, in assert_array_equal
+    assert_array_compare(operator.__eq__, actual, desired, err_msg=err_msg,
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/.venv/lib/python3.11/site-packages/numpy/testing/_private/utils.py", line 921, in assert_array_compare
+    raise AssertionError(msg)
+AssertionError: 
+Arrays are not equal
+
+Mismatched elements: 1 / 1 (100%)
+Max absolute difference among violations: 0.5
+Max relative difference among violations: inf
+ ACTUAL: array([0.5])
+ DESIRED: array([0.])
+
+======================================================================
+FAIL: test_flat_signals_have_zero_features_instead_of_spurious_frequencies (feature_checks.AdditionalFeatureTests.test_flat_signals_have_zero_features_instead_of_spurious_frequencies) (name='emg_median_freq')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/tests/test_additional_features.py", line 56, in test_flat_signals_have_zero_features_instead_of_spurious_frequencies
+    np.testing.assert_array_equal(values, [0.0])
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/.venv/lib/python3.11/site-packages/numpy/_utils/__init__.py", line 86, in wrapper
+    return fun(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/.venv/lib/python3.11/site-packages/numpy/testing/_private/utils.py", line 1057, in assert_array_equal
+    assert_array_compare(operator.__eq__, actual, desired, err_msg=err_msg,
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/.venv/lib/python3.11/site-packages/numpy/testing/_private/utils.py", line 921, in assert_array_compare
+    raise AssertionError(msg)
+AssertionError: 
+Arrays are not equal
+
+Mismatched elements: 1 / 1 (100%)
+Max absolute difference among violations: 10.
+Max relative difference among violations: inf
+ ACTUAL: array([10.])
+ DESIRED: array([0.])
+
+======================================================================
+FAIL: test_known_band_power_ratios_and_spectral_edge (feature_checks.AdditionalFeatureTests.test_known_band_power_ratios_and_spectral_edge)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/tests/test_additional_features.py", line 35, in test_known_band_power_ratios_and_spectral_edge
+    self.assertAlmostEqual(feats["eeg_rel_delta"][0], 0.8, places=10)
+AssertionError: np.float64(0.4444444444444437) != 0.8 within 10 places (np.float64(0.35555555555555635) difference)
+
+======================================================================
+FAIL: test_non_finite_samples_fail_clearly (feature_checks.AdditionalFeatureTests.test_non_finite_samples_fail_clearly)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/tests/test_additional_features.py", line 99, in test_non_finite_samples_fail_clearly
+    with self.assertRaisesRegex(ValueError, "finite"):
+AssertionError: ValueError not raised
+
+======================================================================
+FAIL: test_relative_features_do_not_depend_on_volts_or_microvolts (feature_checks.AdditionalFeatureTests.test_relative_features_do_not_depend_on_volts_or_microvolts) (name='eeg_rel_delta')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/tests/test_additional_features.py", line 45, in test_relative_features_do_not_depend_on_volts_or_microvolts
+    np.testing.assert_allclose(high[name], low[name], rtol=1e-10, atol=1e-12)
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/.venv/lib/python3.11/site-packages/numpy/testing/_private/utils.py", line 1715, in assert_allclose
+    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/.venv/lib/python3.11/site-packages/numpy/testing/_private/utils.py", line 921, in assert_array_compare
+    raise AssertionError(msg)
+AssertionError: 
+Not equal to tolerance rtol=1e-10, atol=1e-12
+
+Mismatched elements: 1 / 1 (100%)
+Max absolute difference among violations: 0.08256872
+Max relative difference among violations: 917431.19265971
+ ACTUAL: array([0.082569])
+ DESIRED: array([8.99999e-08])
+
+======================================================================
+FAIL: test_relative_features_do_not_depend_on_volts_or_microvolts (feature_checks.AdditionalFeatureTests.test_relative_features_do_not_depend_on_volts_or_microvolts) (name='eeg_rel_sigma')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/tests/test_additional_features.py", line 45, in test_relative_features_do_not_depend_on_volts_or_microvolts
+    np.testing.assert_allclose(high[name], low[name], rtol=1e-10, atol=1e-12)
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/.venv/lib/python3.11/site-packages/numpy/testing/_private/utils.py", line 1715, in assert_allclose
+    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/.venv/lib/python3.11/site-packages/numpy/testing/_private/utils.py", line 921, in assert_array_compare
+    raise AssertionError(msg)
+AssertionError: 
+Not equal to tolerance rtol=1e-10, atol=1e-12
+
+Mismatched elements: 1 / 1 (100%)
+Max absolute difference among violations: 0.91743019
+Max relative difference among violations: 917431.19265971
+ ACTUAL: array([0.917431])
+ DESIRED: array([9.999989e-07])
+
+======================================================================
+FAIL: test_relative_features_do_not_depend_on_volts_or_microvolts (feature_checks.AdditionalFeatureTests.test_relative_features_do_not_depend_on_volts_or_microvolts) (name='eeg_sef_95')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/tests/test_additional_features.py", line 45, in test_relative_features_do_not_depend_on_volts_or_microvolts
+    np.testing.assert_allclose(high[name], low[name], rtol=1e-10, atol=1e-12)
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/.venv/lib/python3.11/site-packages/numpy/testing/_private/utils.py", line 1715, in assert_allclose
+    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/.venv/lib/python3.11/site-packages/numpy/testing/_private/utils.py", line 921, in assert_array_compare
+    raise AssertionError(msg)
+AssertionError: 
+Not equal to tolerance rtol=1e-10, atol=1e-12
+
+Mismatched elements: 1 / 1 (100%)
+Max absolute difference among violations: 13.
+Max relative difference among violations: 26.
+ ACTUAL: array([13.5])
+ DESIRED: array([0.5])
+
+======================================================================
+FAIL: test_relative_features_do_not_depend_on_volts_or_microvolts (feature_checks.AdditionalFeatureTests.test_relative_features_do_not_depend_on_volts_or_microvolts) (name='eeg_dwt_d2_energy')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/tests/test_additional_features.py", line 45, in test_relative_features_do_not_depend_on_volts_or_microvolts
+    np.testing.assert_allclose(high[name], low[name], rtol=1e-10, atol=1e-12)
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/.venv/lib/python3.11/site-packages/numpy/testing/_private/utils.py", line 1715, in assert_allclose
+    assert_array_compare(compare, actual, desired, err_msg=str(err_msg),
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/.venv/lib/python3.11/site-packages/numpy/testing/_private/utils.py", line 921, in assert_array_compare
+    raise AssertionError(msg)
+AssertionError: 
+Not equal to tolerance rtol=1e-10, atol=1e-12
+
+Mismatched elements: 1 / 1 (100%)
+Max absolute difference among violations: 0.51170547
+Max relative difference among violations: 608.65733287
+ ACTUAL: array([0.512546])
+ DESIRED: array([0.000841])
+
+======================================================================
+FAIL: test_zero_crossings_ignore_runs_of_exact_zeros (feature_checks.AdditionalFeatureTests.test_zero_crossings_ignore_runs_of_exact_zeros)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/tests/test_additional_features.py", line 62, in test_zero_crossings_ignore_runs_of_exact_zeros
+    self.assertAlmostEqual(feats["eeg_zcr"][0], 1499/2999)
+AssertionError: np.float64(0.0) != 0.49983327775925307 within 7 places (np.float64(0.49983327775925307) difference)
+
+----------------------------------------------------------------------
+Ran 11 tests in 0.007s
+
+FAILED (failures=10, errors=1)

@@ -1,0 +1,209 @@
+{
+  "started_utc": "2026-11-10T13:50:31.709178+00:00",
+  "selection": {
+    "subjects": [
+      0,
+      1,
+      2
+    ],
+    "nights": [
+      1,
+      2
+    ]
+  },
+  "config": {
+    "seed": 0,
+    "preprocess": "bandpass",
+    "spectral_method": "welch",
+    "select": "none"
+  },
+  "cropping": "none",
+  "records": [
+    {
+      "record": "SC4001E0",
+      "subject": "SC400",
+      "epochs": 2650,
+      "native_emg_fs": 1.0,
+      "array_fs": 100.0,
+      "warnings": [
+        "EMG is a low-rate envelope (native/inferred fs=1.0 Hz, emg_is_envelope=False); skipping emg_median_freq."
+      ]
+    },
+    {
+      "record": "SC4002E0",
+      "subject": "SC400",
+      "epochs": 2829,
+      "native_emg_fs": 1.0,
+      "array_fs": 100.0,
+      "warnings": [
+        "EMG is a low-rate envelope (native/inferred fs=1.0 Hz, emg_is_envelope=False); skipping emg_median_freq."
+      ]
+    },
+    {
+      "record": "SC4011E0",
+      "subject": "SC401",
+      "epochs": 2802,
+      "native_emg_fs": 1.0,
+      "array_fs": 100.0,
+      "warnings": [
+        "EMG is a low-rate envelope (native/inferred fs=1.0 Hz, emg_is_envelope=False); skipping emg_median_freq."
+      ]
+    },
+    {
+      "record": "SC4012E0",
+      "subject": "SC401",
+      "epochs": 2848,
+      "native_emg_fs": 1.0,
+      "array_fs": 100.0,
+      "warnings": [
+        "EMG is a low-rate envelope (native/inferred fs=1.0 Hz, emg_is_envelope=False); skipping emg_median_freq."
+      ]
+    },
+    {
+      "record": "SC4021E0",
+      "subject": "SC402",
+      "epochs": 2804,
+      "native_emg_fs": 1.0,
+      "array_fs": 100.0,
+      "warnings": [
+        "EMG is a low-rate envelope (native/inferred fs=1.0 Hz, emg_is_envelope=False); skipping emg_median_freq."
+      ]
+    },
+    {
+      "record": "SC4022E0",
+      "subject": "SC402",
+      "epochs": 2755,
+      "native_emg_fs": 1.0,
+      "array_fs": 100.0,
+      "warnings": [
+        "EMG is a low-rate envelope (native/inferred fs=1.0 Hz, emg_is_envelope=False); skipping emg_median_freq."
+      ]
+    }
+  ],
+  "input_files": [
+    {
+      "path": "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/sleep_edf_data/physionet-sleep-data/SC4001E0-PSG.edf",
+      "sha256": "2b40a18adf76af69a42d6db1f30f31d26b369f6d27ca0050ef30147ef892b131"
+    },
+    {
+      "path": "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/sleep_edf_data/physionet-sleep-data/SC4001EC-Hypnogram.edf",
+      "sha256": "a4cf67694ade1b52a0ddd06d5817fd45d2d3e8bac5302f640f3e9cfbbf12a996"
+    },
+    {
+      "path": "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/sleep_edf_data/physionet-sleep-data/SC4002E0-PSG.edf",
+      "sha256": "bf91934cdbf7c9577bc91b411462ddb51c418e17e10a2f59a15feeeb917b0a5f"
+    },
+    {
+      "path": "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/sleep_edf_data/physionet-sleep-data/SC4002EC-Hypnogram.edf",
+      "sha256": "76e8457a67eaaaa62c7f6cc6e098fbe1c0a9c3fa02fa90ea01460aa481d71e82"
+    },
+    {
+      "path": "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/sleep_edf_data/physionet-sleep-data/SC4011E0-PSG.edf",
+      "sha256": "9e4c34f3f631275990fd7a2d61a24e998c7b03eb9b37ebe5cd7c8323d8310a15"
+    },
+    {
+      "path": "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/sleep_edf_data/physionet-sleep-data/SC4011EH-Hypnogram.edf",
+      "sha256": "5bbf7b4ed8a95c8d20e4347b08c2ded2ee21e2dac4680dedf629795adc2edc83"
+    },
+    {
+      "path": "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/sleep_edf_data/physionet-sleep-data/SC4012E0-PSG.edf",
+      "sha256": "1aa575e87d16f6c8f73c186d7a64a212de919bb9cbb62ac7c1750d3896852095"
+    },
+    {
+      "path": "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/sleep_edf_data/physionet-sleep-data/SC4012EC-Hypnogram.edf",
+      "sha256": "b6323df8b3867a5fdbd80f0cd8233b59659ac496fa48c8c7277f48bfbb1d9a0e"
+    },
+    {
+      "path": "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/sleep_edf_data/physionet-sleep-data/SC4021E0-PSG.edf",
+      "sha256": "810adaedf42621e389ca767274045fbafb123bbc5d99bc15ce2c5bacb52e378c"
+    },
+    {
+      "path": "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/sleep_edf_data/physionet-sleep-data/SC4021EH-Hypnogram.edf",
+      "sha256": "62b49b26bf08941cb0e974cfeeb0a820bf7dd43fb0c66dd89b4c3a6c0ee45dd8"
+    },
+    {
+      "path": "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/sleep_edf_data/physionet-sleep-data/SC4022E0-PSG.edf",
+      "sha256": "8573b32d49ff646b8c1c3589380346be02dc4f25ebcbabb05626cbdffd96d93a"
+    },
+    {
+      "path": "/Users/fangxk2003/Documents/cm2013/SleepEDF/CM2013_SleepEDF_Group14/sleep_edf_data/physionet-sleep-data/SC4022EJ-Hypnogram.edf",
+      "sha256": "5289ca8a9417307cbbf8b2a4e511909ac742c69d45c17aee7f1731a2a98c49ce"
+    }
+  ],
+  "baseline_features": [
+    "eeg_delta",
+    "eeg_theta",
+    "eeg_alpha",
+    "eeg_sigma",
+    "eeg_beta",
+    "eeg_hjorth_activity",
+    "eeg_hjorth_mobility",
+    "eeg_hjorth_complexity",
+    "eeg_spec_entropy",
+    "eog_movement",
+    "emg_rms"
+  ],
+  "eligible_extra_features": [
+    "eeg_rel_delta",
+    "eeg_rel_sigma",
+    "eeg_sef_95",
+    "eeg_zcr",
+    "eeg_dwt_d2_energy",
+    "emg_wl"
+  ],
+  "excluded_feature": "emg_median_freq: original EMG sampling rate below 50 Hz",
+  "epochs": 16688,
+  "subjects": [
+    "SC400",
+    "SC401",
+    "SC402"
+  ],
+  "validation": "paired leave-one-subject-out; both nights stay together",
+  "classifier": {
+    "trees": 200,
+    "class_weight": "balanced",
+    "seed": 0,
+    "n_jobs": 4
+  },
+  "packages": {
+    "numpy": "2.2.6",
+    "scipy": "1.15.3",
+    "PyWavelets": "1.8.0",
+    "mne": "1.10.1",
+    "scikit-learn": "1.7.2"
+  },
+  "source_head": "fcedab4efab97ed07cf338948babab807fd58f06",
+  "source_sha256": {
+    "scripts/evaluate_additional_features.py": "c52e57bc1d625a5f51b502491809f35cf052d25c7dfc8e601fafd2951bcda09e",
+    "src/bsp/__init__.py": "9085cabc4acd8823997d1fd0cec7a14522f7508c408152cea75214f1906c214d",
+    "src/bsp/biosignals.py": "4269d9733c7fadf2a97abd0e94c13f63bfec1fb6070f55d33c5950955a6081cd",
+    "src/bsp/bookstyle.py": "c91ff6e8f0c20d0cacea95e302c70632deba3c3ce85e94d69fb7fdf65270f590",
+    "src/bsp/loaders.py": "e75fc77b2515902aec9a6584cd74cfb06d88e30747018416cf65a7e2f5313536",
+    "src/bsp/metrics.py": "ebe679a66b8a626de450698e13e0e718edb9b8055756ad6d98163542d86095c5",
+    "src/bsp/notebook_checks.py": "87664b9dda0a5d834565fead9222ddfff17821499617a5eb9b3dc7d8d6c36977",
+    "src/bsp/sleep_pipeline.py": "a9cc1ec301b24a449c0bc986ee36c9b37ac332073251a6cffd98b98fbf631569",
+    "src/sleepedf/__init__.py": "9f84605ac66034d89583948862ee6975d9e6f44ca0f2bcd57a08a7ebfd82eceb",
+    "src/sleepedf/feature_extraction/__init__.py": "a2b38c67c1681e2ee7210491a80efc794c29b3b36756a7a2636c0fcf9f96b3b9",
+    "src/sleepedf/feature_extraction/baseline.py": "c0e9ea2628b6eb11d10c0e4888591e16806936d69fa3078eea7342e3eb954dd3",
+    "src/sleepedf/machine_learning/__init__.py": "b82a9bcef233628b9b43aabc74497c5a7b0d9db5b6d18d710910b28ee085fb87",
+    "src/sleepedf/machine_learning/baseline.py": "05ffbdbf2aab3e5fe776f64473b1e0e3b4b06457a3940c282128cc9d409e3094",
+    "src/sleepedf/machine_learning/evaluation.py": "40a7022aa4d80849c2c8611d6e74d9f5cbf7270a4769caac82ebe3f67752e987",
+    "src/sleepedf/machine_learning/logistic_regression.py": "3cfbac55fa410208d5cdafdf795680d10581ea1d2a19ecf6fc3ad54e9f703201",
+    "src/sleepedf/machine_learning/models.py": "5cd8392324a404d3cbe04135aecdfa2232284b904d670c4b9bc0caeff7cb519c",
+    "src/sleepedf/machine_learning/svm.py": "84aac51e7586ddc107e9d87dcd37a786835003aca36417e05ba6feb557cf1d13",
+    "src/sleepedf/machine_learning/xgboost.py": "568a574d32428edc9ed6d978221037fb07cdefc654ed68d06818be259c36d45d",
+    "src/sleepedf/preprocessing/__init__.py": "feca17fe719c6eb1057f4cd6cb36b8903440812fac25cab5ae0b323a7dac1862",
+    "src/sleepedf/preprocessing/base.py": "052f6efb9d08587fe8b6a04aae4838dd4325014109618d5887fca31a269c7854",
+    "src/sleepedf/preprocessing/epoch_timestamps.py": "00375514172ae7cb145014c11f2f41b4ca09f8b9eb546bb880163845babb7c8f",
+    "src/sleepedf/preprocessing/experiments.py": "80f8a60f309f4a15097ae36f49319784d69180c521db93fc66f9c1cd5eddc4bb",
+    "src/sleepedf/reference/__init__.py": "4b680b8fef7c10d8c43c42c0bb24bceeed5be2cbff1925147531176232fe432d",
+    "src/sleepedf/reference/adapter.py": "3124ebf5c067417d62b4b4bb2d87dc40217853cb6235dad97c6e37b8344c0c62",
+    "src/sleepedf/reference/report.py": "5d9b9ad36ca77a0313f742048669ea0445917ba7537daf3bf8cd80b7147f79b8",
+    "src/sleepedf/reference/sleep_edf.py": "342c678b4ee5f0e7885d0287fd7a537001f75511574c4666efc9fdad1228ddfb",
+    "src/sleepedf/track.py": "3e2ead248b213a66f96bbd5c45c00c84e4c62c8c8d1a4402d2e0242b5f5cda09",
+    "tests/test_additional_features.py": "179d74c1fcb7e4e878d40bc2718853053a1494425ca1b8395b4eb7477172f009",
+    "tests/test_features2.py": "633e548bc4c2b21fe0b9e39e1af3f462b3f3560c34ffaa646bc15886d70393b2"
+  },
+  "limitations": "Exploratory three-subject comparison by default; no tuning or final holdout scoring. Individual additions are not independent causal estimates.",
+  "finished_utc": "2026-11-10T13:51:24.785995+00:00"
+}

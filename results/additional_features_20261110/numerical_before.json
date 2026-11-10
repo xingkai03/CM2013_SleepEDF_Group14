@@ -1,0 +1,35 @@
+{
+  "source_sha256": "985acba7523dc245b7ac3263780bb76ebd405d058f1231277af21027de75bc19",
+  "tests_run": 11,
+  "failures": 10,
+  "errors": 1,
+  "known_signal_probe": {
+    "1": {
+      "eeg_rel_delta": 0.7999999999993591,
+      "eeg_rel_sigma": 0.19999999999984086,
+      "eeg_sef_95": 13.0,
+      "eeg_zcr": 0.09969989996665556,
+      "eeg_dwt_d2_energy": 0.11213810331910516,
+      "emg_wl": 2281.584582592082,
+      "emg_median_freq": 20.0
+    },
+    "1e-06": {
+      "eeg_rel_delta": 0.4444444444444437,
+      "eeg_rel_sigma": 0.11111111111111152,
+      "eeg_sef_95": 0.5,
+      "eeg_zcr": 0.09969989996665556,
+      "eeg_dwt_d2_energy": 0.11207849464233102,
+      "emg_wl": 0.002281584582592082,
+      "emg_median_freq": 10.0
+    },
+    "0": {
+      "eeg_rel_delta": 0.0,
+      "eeg_rel_sigma": 0.0,
+      "eeg_sef_95": 0.5,
+      "eeg_zcr": 0.0,
+      "eeg_dwt_d2_energy": 0.0,
+      "emg_wl": 0.0,
+      "emg_median_freq": 10.0
+    }
+  }
+}

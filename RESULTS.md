@@ -22,6 +22,19 @@ For a guide to the saved files and comparisons, see [the results index](results/
 
 ## Iteration log
 
+**2026-11-10 feature pilot:** Validated and corrected the seven-feature prototype in
+`tests/test_features2.py`. Six features are eligible for these recordings; EMG
+median frequency at 10–45 Hz was excluded because the native EMG rate is 1 Hz.
+On subjects 0, 1 and 2, both nights (16,688 epochs), paired P1 LOSO with the same
+200-tree balanced random forest increased pooled κ from 0.749785 (11 features)
+to 0.778985 (17 features), and macro-F1 from 0.650569 to 0.677536. Mean subject
+κ increased from 0.741176 (sample SD 0.116460) to 0.772026 (sample SD 0.123952);
+all three subjects improved. This is an exploratory pilot, pending evaluation
+on the full development cohort; the production pipeline still uses 11 features.
+All 62 unittest checks pass, including 12 new signal-based feature checks.
+See the [feature validation report](results/additional_features_20261110/REPORT.md)
+for individual additions, numerical fixes, saved predictions and provenance.
+
 Paste the metric straight from the harness — `rep["summary"]` prints the required shape, e.g.
 `mean cohens_kappa 0.61 (sd 0.12, range 0.34-0.73 across 8 subjects)`. A pooled number with no
 spread is half a result.

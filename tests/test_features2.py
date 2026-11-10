@@ -25,7 +25,10 @@ except ImportError:
 
 DATA_DIR = PROJECT_ROOT / "sleep_edf_data" / "physionet-sleep-data"
 
-EPS = 1e-12
+FEATURE_NAMES = (
+    "eeg_rel_delta", "eeg_rel_sigma", "eeg_sef_95", "eeg_zcr",
+    "eeg_dwt_d2_energy", "emg_wl", "emg_median_freq",
+)
 
 
 # ---------------------------------------------------------
@@ -61,6 +64,8 @@ class AdvancedSleepFeatures:
     min_emg_fs_for_spectrum: float = 50.0
     # Set True if your Recording upsampled a 1 Hz EMG envelope to 100 Hz:
     emg_is_envelope: bool = False
+    # Supply the ORIGINAL EDF rate; recording.fs may describe a resampled array.
+    emg_native_fs: float | None = None
 
     # ---------- helpers ----------
     @staticmethod
@@ -81,57 +86,76 @@ class AdvancedSleepFeatures:
             raise ValueError("Expected EEG and EMG as 2D arrays (n_epochs, n_samples).")
         if eeg.shape[0] != emg.shape[0]:
             raise ValueError("EEG and EMG have a different number of epochs.")
+        if eeg.shape[1] < 2 or emg.shape[1] < 2:
+            raise ValueError("Each epoch needs at least two samples per channel.")
+        if not np.isfinite(eeg).all() or not np.isfinite(emg).all():
+            raise ValueError("EEG and EMG samples must be finite.")
 
         n_epochs, n_eeg = eeg.shape
         eeg_fs = float(getattr(recording, "fs", None) or n_eeg / self.epoch_sec)
         emg_fs = eeg_fs if emg.shape[1] == n_eeg else emg.shape[1] / self.epoch_sec
+        native_emg_fs = emg_fs if self.emg_native_fs is None else self.emg_native_fs
+        if not np.isfinite(eeg_fs) or eeg_fs <= 0 or not np.isfinite(native_emg_fs) or native_emg_fs <= 0:
+            raise ValueError("Sampling rates must be finite and positive.")
+        skip_emg_spectrum = self.emg_is_envelope or native_emg_fs < self.min_emg_fs_for_spectrum
+        if skip_emg_spectrum:
+            warnings.warn(
+                f"EMG is a low-rate envelope (native/inferred fs={native_emg_fs:.1f} Hz, "
+                f"emg_is_envelope={self.emg_is_envelope}); skipping emg_median_freq."
+            )
+        if n_epochs == 0:
+            names = FEATURE_NAMES[:-1] if skip_emg_spectrum else FEATURE_NAMES
+            return {name: np.empty(0) for name in names}
         feats: Dict[str, np.ndarray] = {}
 
         # ---- 1. EEG spectral features (one Welch call) ----
         freqs, psd = self._psd(eeg, eeg_fs)
         band = self._band_mask(freqs, *self.eeg_band, include_hi=True)
         f_b, p_b = freqs[band], psd[:, band]
-        total = p_b.sum(axis=-1) + EPS
+        total = p_b.sum(axis=-1)
 
         d = self._band_mask(f_b, *self.delta_band)
         s = self._band_mask(f_b, *self.sigma_band)
-        feats["eeg_rel_delta"] = p_b[:, d].sum(axis=-1) / total
-        feats["eeg_rel_sigma"] = p_b[:, s].sum(axis=-1) / total
+        feats["eeg_rel_delta"] = np.divide(p_b[:, d].sum(axis=-1), total,
+                                           out=np.zeros(n_epochs), where=total > 0)
+        feats["eeg_rel_sigma"] = np.divide(p_b[:, s].sum(axis=-1), total,
+                                           out=np.zeros(n_epochs), where=total > 0)
 
         cum = np.cumsum(p_b, axis=-1)
         edge_idx = np.argmax(cum >= self.sef_threshold * total[:, None], axis=-1)
-        feats["eeg_sef_95"] = f_b[edge_idx]
+        feats["eeg_sef_95"] = np.where(total > 0, f_b[edge_idx], 0.0)
 
         # ---- 2. EEG zero-crossing rate ----
         x = eeg - eeg.mean(axis=-1, keepdims=True)
-        crossings = (x[:, :-1] * x[:, 1:]) < 0
+        # Carry the last nonzero sign through exact zeros, counting each true
+        # sign change once even for quantised signals with zero-valued samples.
+        signs = np.sign(x)
+        indices = np.maximum.accumulate(np.where(signs != 0, np.arange(n_eeg), 0), axis=-1)
+        signs = np.take_along_axis(signs, indices, axis=-1)
+        crossings = (signs[:, :-1] * signs[:, 1:]) < 0
         feats["eeg_zcr"] = crossings.sum(axis=-1) / (n_eeg - 1)
 
         # ---- 3. EEG wavelet detail-2 relative energy ----
         coeffs = pywt.wavedec(eeg, self.wavelet, level=self.wavelet_level, axis=-1)
         # coeffs = [cA2, cD2, cD1]
-        cD2 = coeffs[1]
-        wav_total = sum(np.sum(c ** 2, axis=-1) for c in coeffs) + EPS
-        feats["eeg_dwt_d2_energy"] = np.sum(cD2 ** 2, axis=-1) / wav_total
+        cD2 = coeffs[-2]
+        wav_total = sum(np.sum(c ** 2, axis=-1) for c in coeffs)
+        feats["eeg_dwt_d2_energy"] = np.divide(np.sum(cD2 ** 2, axis=-1), wav_total,
+                                               out=np.zeros(n_epochs), where=wav_total > 0)
 
         # ---- 4. EMG waveform length ----
         feats["emg_wl"] = np.sum(np.abs(np.diff(emg, axis=-1)), axis=-1)
 
         # ---- 5. EMG median frequency (only if EMG is a real wide-band signal) ----
-        if self.emg_is_envelope or emg_fs < self.min_emg_fs_for_spectrum:
-            warnings.warn(
-                f"EMG looks like a low-rate envelope (inferred fs={emg_fs:.1f} Hz, "
-                f"emg_is_envelope={self.emg_is_envelope}); skipping emg_median_freq."
-            )
-        else:
+        if not skip_emg_spectrum:
             e_freqs, e_psd = self._psd(emg, emg_fs)
             hi = min(self.emg_band[1], 0.9 * emg_fs / 2)
             eb = self._band_mask(e_freqs, self.emg_band[0], hi, include_hi=True)
             ef_b, ep_b = e_freqs[eb], e_psd[:, eb]
-            e_total = ep_b.sum(axis=-1) + EPS
+            e_total = ep_b.sum(axis=-1)
             e_cum = np.cumsum(ep_b, axis=-1)
             med_idx = np.argmax(e_cum >= 0.5 * e_total[:, None], axis=-1)
-            feats["emg_median_freq"] = ef_b[med_idx]
+            feats["emg_median_freq"] = np.where(e_total > 0, ef_b[med_idx], 0.0)
 
         return feats
 
@@ -182,7 +206,13 @@ if __name__ == "__main__":
     print("Subject:", rec.group, "| fs:", rec.fs, "| channels:", list(rec.epochs.keys()))
     print("EEG:", np.asarray(rec.epochs["eeg"]).shape, "| EMG:", np.asarray(rec.epochs["emg"]).shape)
 
-    extractor = AdvancedSleepFeatures()
+    # Read EMG alone so MNE reports its native rate instead of the mixed-channel
+    # rate. Resampling a 1 Hz envelope cannot supply a 10–45 Hz spectrum.
+    import mne
+    with mne.io.read_raw_edf(psg_path, include=["EMG submental"],
+                             preload=False, verbose="ERROR") as raw_emg:
+        native_emg_fs = float(raw_emg.info["sfreq"])
+    extractor = AdvancedSleepFeatures(emg_native_fs=native_emg_fs)
     feats = extractor.extract(rec)
     check_features(rec, feats)
 
