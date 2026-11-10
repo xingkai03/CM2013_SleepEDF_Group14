@@ -45,6 +45,20 @@ class WaveletDenoising:
             channels=("eeg",),
         )
 
+@dataclass
+class BandpassWavelet:
+    """Combined preprocessing: P1 band-pass followed by P2 wavelet denoising."""
+
+    wavelet: str = "db4"
+
+    def transform(self, recording: Recording) -> Recording:
+        filtered = EEGBandpass().transform(recording)
+
+        denoised = WaveletDenoising(
+            wavelet=self.wavelet
+        ).transform(filtered)
+
+        return denoised
 
 @dataclass
 class BrokenSegmentHandling:

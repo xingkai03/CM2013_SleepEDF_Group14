@@ -1,0 +1,47 @@
+{
+  "created_utc": "2026-11-01T11:02:32.871269+00:00",
+  "p1_run": "results\\real__P1_20261029T161038916244Z",
+  "qc_dir": "results\\qc_68_subjects",
+  "epochs": 360621,
+  "oof_predictions_complete": true,
+  "checkpoint_signature": "d861f1ac1a70d0d8a063f36bfb0607765ca6c7724d0b86689e615d553c0ff4a5",
+  "results": [
+    {
+      "category": "all",
+      "n_epochs": 360621,
+      "n_errors": 45538,
+      "error_rate_percent": 12.627661727963707
+    },
+    {
+      "category": "p3_flagged",
+      "n_epochs": 748,
+      "n_errors": 64,
+      "error_rate_percent": 8.556149732620321
+    },
+    {
+      "category": "p5_flagged",
+      "n_epochs": 2882,
+      "n_errors": 67,
+      "error_rate_percent": 2.3247744621790423
+    },
+    {
+      "category": "both_flagged",
+      "n_epochs": 0,
+      "n_errors": 0,
+      "error_rate_percent": null
+    },
+    {
+      "category": "either_flagged",
+      "n_epochs": 3630,
+      "n_errors": 131,
+      "error_rate_percent": 3.608815426997245
+    },
+    {
+      "category": "unflagged",
+      "n_epochs": 356991,
+      "n_errors": 45407,
+      "error_rate_percent": 12.719368275390696
+    }
+  ],
+  "caveat": "Associations only, not causal. QC flags are heuristic and not artifact ground truth. No stage adjustment in overall rates."
+}
