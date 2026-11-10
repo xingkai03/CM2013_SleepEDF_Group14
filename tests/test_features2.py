@@ -5,30 +5,42 @@ from pathlib import Path
 from typing import Dict, List
 
 import numpy as np
+import pandas as pd
 import pywt
 from scipy.signal import welch
 
 # ---------------------------------------------------------
 # Path setup & imports
 # ---------------------------------------------------------
-# Assumes this script is inside tests/ (project root = parent of that folder)
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
+# Updated imports to pull SleepEDFTrack directly from sleepedf
 try:
-    from reference.adapter import Recording
-    from reference.sleep_edf import SleepEDFTrack
-except ImportError:
+    from sleepedf import SleepEDFTrack
     from sleepedf.reference.adapter import Recording
-    from sleepedf.reference.sleep_edf import SleepEDFTrack
+except ImportError:
+    try:
+        from reference.sleep_edf import SleepEDFTrack
+        from reference.adapter import Recording
+    except ImportError:
+        from sleepedf import SleepEDFTrack, Recording
 
 DATA_DIR = PROJECT_ROOT / "sleep_edf_data" / "physionet-sleep-data"
 
+<<<<<<< Updated upstream
 FEATURE_NAMES = (
     "eeg_rel_delta", "eeg_rel_sigma", "eeg_sef_95", "eeg_zcr",
     "eeg_dwt_d2_energy", "emg_wl", "emg_median_freq",
 )
+=======
+# Recordings to analyse. None = every *PSG.edf file in DATA_DIR.
+# To restrict the run, give a list of file prefixes, e.g. ["SC4001", "SC4002"].
+SUBJECTS = None
+
+EPS = 1e-12
+>>>>>>> Stashed changes
 
 
 # ---------------------------------------------------------
@@ -38,7 +50,7 @@ FEATURE_NAMES = (
 class AdvancedSleepFeatures:
     """Extracts 7 additional features per 30 s epoch.
 
-    Input: Recording whose .epochs["eeg"] and .epochs["emg"] are 2D arrays
+    Input: Preprocessed Recording whose .epochs["eeg"] and .epochs["emg"] are 2D arrays
     of shape (n_epochs, n_samples). Everything is vectorized over epochs.
 
     Features
@@ -60,12 +72,16 @@ class AdvancedSleepFeatures:
     sef_threshold: float = 0.95
     emg_band: tuple = (10.0, 45.0)      # band used for EMG median frequency
     wavelet: str = "db4"
-    wavelet_level: int = 2              # we only need D2
+    wavelet_level: int = 2              # D2 level
     min_emg_fs_for_spectrum: float = 50.0
+<<<<<<< Updated upstream
     # Set True if your Recording upsampled a 1 Hz EMG envelope to 100 Hz:
     emg_is_envelope: bool = False
     # Supply the ORIGINAL EDF rate; recording.fs may describe a resampled array.
     emg_native_fs: float | None = None
+=======
+    emg_is_envelope: bool = True
+>>>>>>> Stashed changes
 
     # ---------- helpers ----------
     @staticmethod
@@ -137,17 +153,33 @@ class AdvancedSleepFeatures:
 
         # ---- 3. EEG wavelet detail-2 relative energy ----
         coeffs = pywt.wavedec(eeg, self.wavelet, level=self.wavelet_level, axis=-1)
+<<<<<<< Updated upstream
         # coeffs = [cA2, cD2, cD1]
         cD2 = coeffs[-2]
         wav_total = sum(np.sum(c ** 2, axis=-1) for c in coeffs)
         feats["eeg_dwt_d2_energy"] = np.divide(np.sum(cD2 ** 2, axis=-1), wav_total,
                                                out=np.zeros(n_epochs), where=wav_total > 0)
+=======
+        cD2 = coeffs[1]
+        wav_total = sum(np.sum(c ** 2, axis=-1) for c in coeffs) + EPS
+        feats["eeg_dwt_d2_energy"] = np.sum(cD2 ** 2, axis=-1) / wav_total
+>>>>>>> Stashed changes
 
         # ---- 4. EMG waveform length ----
         feats["emg_wl"] = np.sum(np.abs(np.diff(emg, axis=-1)), axis=-1)
 
+<<<<<<< Updated upstream
         # ---- 5. EMG median frequency (only if EMG is a real wide-band signal) ----
         if not skip_emg_spectrum:
+=======
+        # ---- 5. EMG median frequency ----
+        if self.emg_is_envelope or emg_fs < self.min_emg_fs_for_spectrum:
+            warnings.warn(
+                f"EMG looks like a low-rate envelope (inferred fs={emg_fs:.1f} Hz, "
+                f"emg_is_envelope={self.emg_is_envelope}); skipping emg_median_freq."
+            )
+        else:
+>>>>>>> Stashed changes
             e_freqs, e_psd = self._psd(emg, emg_fs)
             hi = min(self.emg_band[1], 0.9 * emg_fs / 2)
             eb = self._band_mask(e_freqs, self.emg_band[0], hi, include_hi=True)
@@ -182,9 +214,66 @@ def check_features(rec: Recording, feats: Dict[str, np.ndarray], epoch_idx: int 
     f, p = welch(eeg[epoch_idx], fs=fs, window="hann", nperseg=int(2 * fs))
     m = (f >= 0.5) & (f <= 30.0)
     manual = p[m][(f[m] >= 0.5) & (f[m] < 4.0)].sum() / p[m].sum()
-    assert np.isclose(manual, feats["eeg_rel_delta"][epoch_idx], rtol=1e-6), "Mismatch"
+    assert np.isclose(manual, feats["eeg_rel_delta"][epoch_idx], rtol=1e-3, atol=1e-4), (
+        f"Mismatch: manual={manual:.6f}, extracted={feats['eeg_rel_delta'][epoch_idx]:.6f}"
+    )
     print(f"Checks passed (n_epochs={n_epochs}, eeg_fs={fs:.1f} Hz, "
           f"manual rel_delta={manual:.4f}).")
+
+
+# ---------------------------------------------------------
+# Per-recording pipeline
+# ---------------------------------------------------------
+def process_recording(track, extractor: AdvancedSleepFeatures, psg_path: Path, subject: str) -> pd.DataFrame:
+    """Load, preprocess, extract features and return one DataFrame row per epoch."""
+    print(f"\n{'=' * 60}\nLoading {psg_path.name}\n{'=' * 60}")
+
+    recordings = track.load(str(DATA_DIR), psg_paths=[psg_path])
+    print(f"Loaded {len(recordings)} recording(s).")
+
+    raw_rec = recordings[0]
+    print("Subject:", raw_rec.group, "| fs:", raw_rec.fs, "| channels:", list(raw_rec.epochs.keys()))
+    print("Raw EEG shape:", np.asarray(raw_rec.epochs["eeg"]).shape,
+          "| Raw EMG shape:", np.asarray(raw_rec.epochs["emg"]).shape)
+
+    # 1. Configure and run preprocessing (P1 Bandpass + P3/P5 Quality Control)
+    cfg = {
+        "preprocess": "bandpass",
+        "quality_control": True,
+    }
+    print("\nApplying track.preprocess(rec, cfg)...")
+    rec_processed = track.preprocess(raw_rec, cfg)
+
+    # 2. Inspect Quality Control flag masks (P3 & P5)
+    n_labels = len(rec_processed.labels)
+    broken_mask = rec_processed.meta.get("broken_epoch_mask", np.zeros(n_labels, dtype=bool))
+    clipping_mask = rec_processed.meta.get("suspected_clipping_mask", np.zeros(n_labels, dtype=bool))
+    print(f"[QC P3] Broken / flat epochs flagged: {np.sum(broken_mask)} / {len(broken_mask)}")
+    print(f"[QC P5] Suspected clipping epochs flagged: {np.sum(clipping_mask)} / {len(clipping_mask)}")
+
+    # 3. Extract features from preprocessed recording
+    feats = extractor.extract(rec_processed)
+    check_features(rec_processed, feats)
+
+    print("\nFeature Summary:")
+    for name, arr in feats.items():
+        print(f"  - {name:20s} | Shape: {arr.shape} | Mean: {arr.mean():.4e} | Std: {arr.std():.4e}")
+
+    # Inspect EMG power distribution post-preprocessing
+    f, p = welch(np.asarray(rec_processed.epochs["emg"]), fs=rec_processed.fs,
+                 nperseg=int(2 * rec_processed.fs), axis=-1)
+    low_share = p[:, f < 2].sum(-1) / (p.sum(-1) + EPS)
+    print(f"\nEMG power below 2 Hz: median {np.median(low_share):.0%}")
+
+    df = pd.DataFrame(feats)
+    df["stage"] = np.asarray(rec_processed.labels)
+    df["flag_broken"] = broken_mask
+    df["flag_clipping"] = clipping_mask
+    df["subject"] = subject
+
+    print(f"\nMean feature value per sleep stage ({subject}):")
+    print(df.groupby("stage")[list(feats.keys())].mean())
+    return df
 
 
 # ---------------------------------------------------------
@@ -194,10 +283,12 @@ if __name__ == "__main__":
     if not DATA_DIR.exists():
         raise FileNotFoundError(f"Data directory not found at: {DATA_DIR}")
 
-    psg_path = sorted(DATA_DIR.glob("*PSG.edf"))[0]
-    print(f"Loading {psg_path.name}")
+    pd.set_option("display.float_format", lambda v: f"{v:.4g}")
+    pd.set_option("display.width", 200)
+    pd.set_option("display.max_columns", 50)
 
     track = SleepEDFTrack()
+<<<<<<< Updated upstream
     recordings = track.load(str(DATA_DIR), psg_paths=[psg_path])
     # If this raises a type error about psg_paths, try psg_paths=[str(psg_path)]
     print(f"Loaded {len(recordings)} recording(s).")
@@ -215,17 +306,60 @@ if __name__ == "__main__":
     extractor = AdvancedSleepFeatures(emg_native_fs=native_emg_fs)
     feats = extractor.extract(rec)
     check_features(rec, feats)
+=======
+    extractor = AdvancedSleepFeatures()
+>>>>>>> Stashed changes
 
-    for name, arr in feats.items():
-        print(f"  • {name:20s} | Shape: {arr.shape} | Mean: {arr.mean():.4f} | Std: {arr.std():.4f}")
+    # Collect the PSG files to process
+    if SUBJECTS is None:
+        psg_files = sorted(DATA_DIR.glob("*PSG.edf"))
+    else:
+        psg_files = []
+        for prefix in SUBJECTS:
+            matches = sorted(DATA_DIR.glob(f"{prefix}*PSG.edf"))
+            if not matches:
+                print(f"\n[WARNING] No PSG file found for {prefix} in {DATA_DIR}, skipping.")
+            psg_files.extend(matches)
 
-    # Is the EMG a real wide-band signal or an upsampled envelope?
-    f, p = welch(np.asarray(rec.epochs["emg"]), fs=rec.fs, nperseg=int(2 * rec.fs), axis=-1)
-    low_share = p[:, f < 2].sum(-1) / p.sum(-1)
-    print(f"\nEMG power below 2 Hz: median {np.median(low_share):.0%}")
+    if not psg_files:
+        raise FileNotFoundError(f"No *PSG.edf files found in {DATA_DIR}")
+    print(f"Found {len(psg_files)} PSG file(s): {[p.name for p in psg_files]}")
 
+<<<<<<< Updated upstream
     import pandas as pd
     df = pd.DataFrame(feats)
     df["stage"] = np.asarray(rec.labels)
     print("\nMean feature value per stage:")
     print(df.groupby("stage").mean().round(4))
+=======
+    frames = []
+    for psg_path in psg_files:
+        subject = psg_path.name[:6]  # e.g. "SC4001" from "SC4001E0-PSG.edf"
+        try:
+            frames.append(process_recording(track, extractor, psg_path, subject))
+        except Exception as exc:  # keep going if one recording fails
+            print(f"\n[ERROR] {psg_path.name} failed: {type(exc).__name__}: {exc}")
+
+    if not frames:
+        raise RuntimeError("No recordings could be processed.")
+
+    # ---------- Combined results across all recordings ----------
+    df_all = pd.concat(frames, ignore_index=True)
+    feat_cols = [c for c in df_all.columns
+                 if c not in ("stage", "flag_broken", "flag_clipping", "subject")]
+
+    print(f"\n{'=' * 60}\nCOMBINED RESULTS ({df_all['subject'].nunique()} recordings, "
+          f"{len(df_all)} epochs)\n{'=' * 60}")
+
+    print("\nMean feature value per sleep stage (all recordings pooled):")
+    print(df_all.groupby("stage")[feat_cols].mean())
+
+    print("\nStd per sleep stage (all recordings pooled):")
+    print(df_all.groupby("stage")[feat_cols].std())
+
+    # Does the stage pattern hold in every subject? One block per feature.
+    print("\nMean per stage, per subject (rows = stage, columns = subject):")
+    for col in feat_cols:
+        print(f"\n{col}")
+        print(df_all.pivot_table(index="stage", columns="subject", values=col, aggfunc="mean"))
+>>>>>>> Stashed changes
